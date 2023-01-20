@@ -1,11 +1,11 @@
-<aside class="logo"> 
+<aside class="logo">
 
 	{% if page.url == '/index.html' or page.url == '/' %}
-		{% assign link = '/about' %}
-		{% assign prompt = 'About the Author' %}
+	{% assign link = '/about' %}
+	{% assign prompt = 'About the Author' %}
 	{% else %}
-		{% assign link = '/' %}
-		{% assign prompt = 'Back to Home' %}
+	{% assign link = '/' %}
+	{% assign prompt = 'Back to Home' %}
 	{% endif %}
 
 	<a href="{{ link | prepend: site.baseurl }}">
@@ -15,14 +15,16 @@
 </aside>
 
 <div class="footer-flex" style="margin-bottom: 4px">
-Thinking, Coding, Improving
+	Thinking, Coding, Improving
 </div>
 
 <div class="footer-flex" style="color: #333333">
-    <a href="http://github.com/VOID001"><i class="fa-brands fa-lg fa-github"></i></a>
-    <span style="margin: 4px"></span>
-    <a href="https://t.me/s/void001_fav"><i class="fa-brands fa-lg fa-telegram"></i></a>
-    <span style="margin: 4px"></span>
-    <a href="{{site.baseurl}}/feed"><i class="fa-solid fa-lg fa-rss"></i></a>
+	<a href="http://github.com/VOID001"><i class="fa-brands fa-lg fa-github"></i></a>
+	<span style="margin: 4px"></span>
+	<a href="https://t.me/s/void001_fav"><i class="fa-brands fa-lg fa-telegram"></i></a>
+	<span style="margin: 4px"></span>
+	<a href="{{site.baseurl}}/feed"><i class="fa-solid fa-lg fa-rss"></i></a>
+	<span style="margin: 4px"></span>
+	<a href="{{site.baseurl}}/friends"><i class="fa-solid fa-lg fa-ship"></i></a>
 </div>
 <script src="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.1.1/js/fontawesome.min.js"></script>
