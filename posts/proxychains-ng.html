@@ -1,0 +1,287 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1" /><title>proxychains-ng 原理解析</title><meta name="twitter:card" content="summary" /><meta name="twitter:site" content="@" /><meta name="twitter:title" content="proxychains-ng 原理解析" /><meta name="twitter:description" content="The content is recoverd from Wordpress Blog, for more details please check HERE"><meta name="description" content="The content is recoverd from Wordpress Blog, for more details please check HERE"><meta name="google-site-verification" content="epFgX0s_0RM3CdjwFcsewfXzPov2g8s9ZBOLyaIUH-o"><link rel="icon" href="/assets/favicon.png"><link rel="apple-touch-icon" href="/assets/touch-icon.png"><link rel="stylesheet" href="//code.cdn.mozilla.net/fonts/fira.css"><link rel="stylesheet" href="/assets/core.css"><link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.1.1/css/all.min.css" rel="stylesheet"><link href="https://cdn.bootcdn.net/ajax/libs/highlight.js/11.5.0/styles/github.min.css" rel="stylesheet"><link rel="canonical" href="/posts/proxychains-ng"><link rel="alternate" type="application/atom+xml" title="VOID001's WOWO" href="/feed.xml" /> <script> (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){ (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o), m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m) })(window,document,'script','//www.google-analytics.com/analytics.js','ga'); ga( 'create', 'UA-73703130-2', 'auto' ); ga( 'send', 'pageview' ); </script></head><body><aside class="logo"> <a href="/"> <img src="/assets/avatar.jpeg" class="gravatar"> </a> <span class="logo-prompt">Back to Home</span></aside><div class="footer-flex" style="margin-bottom: 4px"> Thinking, Coding, Improving</div><div class="footer-flex" style="color: #333333"> <a href="http://github.com/VOID001"><i class="fa-brands fa-lg fa-github"></i></a> <span style="margin: 4px"></span> <a href="https://t.me/s/void001_fav"><i class="fa-brands fa-lg fa-telegram"></i></a> <span style="margin: 4px"></span> <a href="/feed"><i class="fa-solid fa-lg fa-rss"></i></a> <span style="margin: 4px"></span> <a href="/friends"><i class="fa-solid fa-lg fa-ship"></i></a></div><script src="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.1.1/js/fontawesome.min.js"></script><main> <noscript><style> article .footnotes { display: block; }</style></noscript><article><div class="center"><h1>proxychains-ng 原理解析</h1><time>August 14, 2018</time> <span>[ ]</span></div><div class="divider"></div><p>The content is recoverd from Wordpress Blog, for more details please check <a href="recover-my-blog">HERE</a></p><h5 id="august-14-2018"><a href="https://web.archive.org/web/20210514123224/https://void-shana.moe/linux/proxychains-ng.html" title="5:04 pm">August 14, 2018</a></h5><p><a href="https://web.archive.org/web/20210514123224/https://void-shana.moe/author/void001" title="View all posts by VOID001">VOID001</a> Comments <a href="https://web.archive.org/web/20210514123224/https://void-shana.moe/linux/proxychains-ng.html#comments">12 comments</a></p><p>Preface The content is recoverd from Wordpress Blog, for more details please check <a href="recover-my-blog">HERE</a></p><p>提起 proxychains 相信大家都并不陌生，这个程序可以方便的让你在终端使用 SOCKS5, SOCKS4, HTTP 等协议代理网络访问，而不需要为了转换 SOCKS5 协议再搭建一个 HTTP 的代理来使用 http_proxy, https_proxy 这些 Shell 内置的环境变量来访问网络了。不过 proxychains 并不对所有的应用程序有效，一个典型的情况是 Golang 编写的 程序是无法使用 proxychains 进行代理的。在使用 proxychains 的时候会报这样的错误:</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>dial tcp 224.0.0.1:80: connect: network is unreachable
+</code></pre></div></div><p>下面就通过对 proxychains-ng 的原理的解析，来解答这个问题，并且为 golang 编写的程序提供一个解决方案。</p><p>Shared Libraries The content is recoverd from Wordpress Blog, for more details please check <a href="recover-my-blog">HERE</a></p><p>Linux 下的很多程序都依赖着多种多样的<strong>动态链接库(shared library)</strong>，使用动态链接库既可以节省磁盘的空间大小（你编译出来的程序不会特别大），同时也会节省程序的运行内存，多个共享动态链接库的进程只需要一份库在内存中。若是静态链接的话，则每一个进程都要带一份库。通过 ls -l /usr/lib (根据发行版不同路径可能会有不同)即可看到很多动态链接库。</p><p>首先来介绍几个动态链接库的基本知识，大家会发现这个文件夹下面有很多链接，比如</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>lrwxrwxrwx   1 root root        19 Aug  7 00:22 libzmf-0.0.so -&gt; libzmf-0.0.so.0.0.2                                                                                                                         
+lrwxrwxrwx   1 root root        19 Aug  7 00:22 libzmf-0.0.so.0 -&gt; libzmf-0.0.so.0.0.2
+</code></pre></div></div><p>有两个指向 libzmf-0.0.so.0.0.2 的软连接这些文件的名字很相似，那么具体都代表什么呢，下面就来进行说明。</p><p>对于一个动态链接库来说，有三个名字，分别是 soname, linkername 和 realname</p><ul><li>linkername: libxxx.so (没有任何版本号) 在安装 library 的时候建立，是一个链接到 realname 的软链接</li><li>soname: libxxx.so.(VER) (带有版本号) 在安装 library 的时候建立，是一个链接到 realname 的软链接</li><li>realname: libxxx.so.(VER).(MINOR).[RELEASE] (必须带有版本号和 minor number, 可选的为带有 release number) 是该 library 本身</li></ul><p>对于上面这个例子来说 libzmf-0.0 的 soname 就是 libzmf-0.0.so.0， linkername 是 libzmf-0.0.so，realname 是 libzmf-0.0.so.0.0.2</p><p>当一个程序指定要链接的动态链接库的时候，他们指定的是这个链接库的 soname, 而不是 realname 这样的考量是在链接库更新 minor number 的时候，不需要对这个程序进行重新链接，至于为什么没有用 linkername 是为了 ABI 兼容性考虑，当一个库升级后 ABI 发生了变化时，依赖这个库的程序必须要重新编译才能使用，否则就会因为 ABI 不兼容导致段错误等问题发生。因而当一个库的 MAJOR VER NUMBER 更新时，说明它有 ABI Breaking Change. 而当一个库只是更新了 MINOR/RELEASE NUMBER 的时候 这时我们不需要进行重新编译。</p><p>Dynamic Loading Progress The content is recoverd from Wordpress Blog, for more details please check <a href="recover-my-blog">HERE</a></p><p>本文重点在于讲解 proxychains 的原理，因而对 loader 部分只提及相关部分，下述过程并不是完整的程序加载过程</p><p>在 Linux 上所有动态链接的程序都会链接一个 ld-linux-xxxx.so(下面简称 ld-linux.so) 的动态链接库，这个动态链接库很特殊，它会解析该程序所需的 shared libraires ，并且加载他们以及他们必要的依赖 我们可以通过查看每一个动态链接的程序的 Dynamic Section 了解到其依赖的链接库都是什么。比如这是 curl <strong>直接依赖</strong>的动态链接库:</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>╰─(´・ω・)つ  readelf -a /usr/bin/curl | grep NEEDED
+ 0x0000000000000001 (NEEDED)             Shared library: [libcurl.so.4]
+ 0x0000000000000001 (NEEDED)             Shared library: [libpthread.so.0]
+ 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]
+</code></pre></div></div><p>注意这些只是 “直接依赖”, ld-linux.so 还会去解析这些依赖的 library 的依赖是什么，最后得到我们通过 ldd 看到的输出结果</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>╰─(´・ω・)つ  ldd /usr/bin/curl                                                                                                                                                                          1 ↵
+        linux-vdso.so.1 (0x00007fffb9f6a000)
+        libcurl.so.4 =&gt; /usr/lib/libcurl.so.4 (0x00007fd1cbbd6000)
+        libpthread.so.0 =&gt; /usr/lib/libpthread.so.0 (0x00007fd1cbbb5000)
+        libc.so.6 =&gt; /usr/lib/libc.so.6 (0x00007fd1cb9f1000)
+        libnghttp2.so.14 =&gt; /usr/lib/libnghttp2.so.14 (0x00007fd1cb7cc000)
+        libidn2.so.0 =&gt; /usr/lib/libidn2.so.0 (0x00007fd1cb5af000)
+        libpsl.so.5 =&gt; /usr/lib/libpsl.so.5 (0x00007fd1cb39f000)
+        libssl.so.1.1 =&gt; /usr/lib/libssl.so.1.1 (0x00007fd1cb133000)
+        libcrypto.so.1.1 =&gt; /usr/lib/libcrypto.so.1.1 (0x00007fd1cacb6000)
+        libgssapi\_krb5.so.2 =&gt; /usr/lib/libgssapi\_krb5.so.2 (0x00007fd1caa68000)
+        libkrb5.so.3 =&gt; /usr/lib/libkrb5.so.3 (0x00007fd1ca77f000)
+        libk5crypto.so.3 =&gt; /usr/lib/libk5crypto.so.3 (0x00007fd1ca54c000)
+        libcom\_err.so.2 =&gt; /usr/lib/libcom\_err.so.2 (0x00007fd1ca348000)
+        libz.so.1 =&gt; /usr/lib/libz.so.1 (0x00007fd1ca12f000)
+        /lib64/ld-linux-x86-64.so.2 =&gt; /usr/lib64/ld-linux-x86-64.so.2 (0x00007fd1cc0e0000)
+        libunistring.so.2 =&gt; /usr/lib/libunistring.so.2 (0x00007fd1c9daf000)
+        libdl.so.2 =&gt; /usr/lib/libdl.so.2 (0x00007fd1c9daa000)
+        libkrb5support.so.0 =&gt; /usr/lib/libkrb5support.so.0 (0x00007fd1c9b9d000)
+        libkeyutils.so.1 =&gt; /usr/lib/libkeyutils.so.1 (0x00007fd1c9999000)
+        libresolv.so.2 =&gt; /usr/lib/libresolv.so.2 (0x00007fd1c997e000)
+
+</code></pre></div></div><p>对于每一个 library 是如何解析到其路径的具体过程，可以通过查看 man 8 ld-linux  了解具体过程</p><h2 id="special-environment-variable-ld_preload">Special Environment Variable: LD_PRELOAD</h2><p>在 ld-linux(8) 的 Man Page 里 我们可以看到这样一个环境变量的说明: LD_PRELOAD</p><blockquote><p>A list of additional, user-specified, ELF shared objects to be loaded before all others.</p></blockquote><p>当 secure-execution 模式没有开启的时候 指定 在 LD_PRELOAD 里的 shared library 会比其他任何 shared libray 都先加载. 这就给我们去伪造, hook 调用函数提供了途径。</p><p>背景知识铺垫到这里就结束了，接下来我们将结合 proxychains-ng 的代码介绍其原理</p><p>Proxychains-ng 的原理 The content is recoverd from Wordpress Blog, for more details please check <a href="recover-my-blog">HERE</a></p><p>简单来说, proxychains-ng 就是 hook 了 libc 里提供的基本网络通讯函数</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>//╰─(´・ω・)つ  cat libproxychains.c  | grep SETUP
+#define SETUP\_SYM(X) do { if (! true\_ ## X ) true\_ ## X = load\_sym( # X, X ); } while(0)
+        SETUP\_SYM(connect);
+        SETUP\_SYM(sendto);
+        SETUP\_SYM(gethostbyname);
+        SETUP\_SYM(getaddrinfo);
+        SETUP\_SYM(freeaddrinfo);
+        SETUP\_SYM(gethostbyaddr);
+        SETUP\_SYM(getnameinfo);
+        SETUP\_SYM(close);
+        SETUP\_SYM(\_\_xnet\_connect);
+
+</code></pre></div></div><p>这些包在 SETUP_SYM 里的函数(在 SOLARIS 中 connect 是 __xnet_connect)会被 proxychains 进行 hook， 然后通过内置的 hook 函数进行后续代理操作。</p><p>我们查看 <a href="https://web.archive.org/web/20210514123224/https://github.com/rofl0r/proxychains-ng/blob/1c8f8e4e7e31e64131f5f5e031f216b557f7b5ed/src/libproxychains.c#L442">src/libproxychains.c</a> 可以发现，这个 libproxychains.c 含有 connect, sendto, … 这些函数, 而且函数的签名和 connect(3) sendto(3)… 的都一样</p><p>这就是 proxychains 的原理所在，proxychains 将这些函数重写一份，并且 export libproxychains 为 shared library. 当该 Library 被 preload (设置在 LD_PRELOAD) 里的时候，则在程序调用 connect , close 等网络相关的 libc 函数的时候，就会被 proxychains 接管。</p><p>我们在代码里还能看到很多的 true_xxx 函数, 他们只有函数调用没有定义, 在 src/core.h 中定义这些符号从外部引用</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>// src/core.h
+extern connect\_t true\_connect;
+
+</code></pre></div></div><p>为了进一步理解 proxychains 我们需要弄清楚 这个 true_xxx 从何而来, 因为这些函数被钩子函数们屡次调用。我们现在就回到 SETUP_SYM 这个宏的定义上来</p><p>SETUP_SYM 这个宏就是 true_xxx 系列函数的解析的关键</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>#define SETUP\_SYM(X) do { if (! true\_ ## X ) true\_ ## X = load\_sym( # X, X ); } while(0)
+
+</code></pre></div></div><p>我们以 connect 为例，展开一下这个宏: SETUP_SYM(connect) 被展开为</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code> do { if (! true\_connect ) true\_connect = load\_sym( "connect", connect ); } while(0);
+
+</code></pre></div></div><p>这里 宏 invoke 了 load_sym 函数, 该函数<a href="https://web.archive.org/web/20210514123224/https://github.com/rofl0r/proxychains-ng/blob/1c8f8e4e7e31e64131f5f5e031f216b557f7b5ed/src/libproxychains.c#L83">如下</a> :</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>static void* load\_sym(char* symname, void* proxyfunc) {
+
+	void *funcptr = dlsym(RTLD\_NEXT, symname);
+
+	if(!funcptr) {
+		fprintf(stderr, "Cannot load symbol '%s' %s\n", symname, dlerror());
+		exit(1);
+	} else {
+		PDEBUG("loaded symbol '%s'" " real addr %p  wrapped addr %p\n", symname, funcptr, proxyfunc);
+	}
+	if(funcptr The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog) proxyfunc) {
+		PDEBUG("circular reference detected, aborting!\n");
+		abort();
+	}
+	return funcptr;
+}
+</code></pre></div></div><p>load_sym 调用了 dlsym 并且将 dlsym 返回值返回，然后通过上面的宏我们就知道 true_xxx 就会得到这个返回的地址 也就是函数地址。另一问题就是，这个返回的地址意味什么？相信很多人已经猜到了，true_xxx 这些函数就应该是指向那些没有被 hook 的原始网络函数的。我们现在查看 dlsym 的具体调用的含义。通过 dlsym(3) 我们知道了， dlsym 的两个参数分别为 dlopen 打开的 handle, 以及要解析的 symbol name。而  RTLD_NEXT 和 RTLD_DEFAULT 是两个 pseudo-handle。我们这里贴一下 RTLD_NEXT 的解释的全文</p><blockquote><p>RTLD_NEXT</p><p>Find the next occurrence of the desired symbol in the search order after the current object. This allows one to provide a wrapper around a function in another shared object, so that,</p><p>for example, the definition of a function in a preloaded shared object (see LD_PRELOAD in ld.so(8)) can find and invoke the “real” function provided in another shared object (or for</p><p>that matter, the “next” definition of the function in cases where there are multiple layers of preloading).</p></blockquote><p>可以知道，这个 pseudo-handle 会通过解析当前的 library search path 找到 <strong>第二个</strong>symbol name 等于 symname 的函数，manpage 里还贴心的给出了一个应用场景，就是在这种 LD_PRELOAD 的情况下想要加载 “real” 函数的时候，这样可以方便的进行加载。</p><p>我们再来查看一下 hooked connect 函数的<a href="https://web.archive.org/web/20210514123224/https://github.com/rofl0r/proxychains-ng/blob/1c8f8e4e7e31e64131f5f5e031f216b557f7b5ed/src/libproxychains.c#L459">具体逻辑</a></p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>	if(!((fam  The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog) AF\_INET || fam The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog) AF\_INET6) &amp;&amp; socktype The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog) SOCK\_STREAM))
+		return true\_connect(sock, addr, len);
+</code></pre></div></div><p>通过这个判断可以看到，当该链接不满足 TCP 链接的条件的时候，是会去调用 libc 的 connect 函数继续下去</p><p><a href="https://web.archive.org/web/20210514123224/https://github.com/rofl0r/proxychains-ng/blob/1c8f8e4e7e31e64131f5f5e031f216b557f7b5ed/src/libproxychains.c#L499">这里</a></p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>	ret = connect\_proxy\_chain(sock,
+				  dest\_ip,
+				  htons(port),
+				  proxychains\_pd, proxychains\_proxy\_count, proxychains\_ct, proxychains\_max\_chain);
+</code></pre></div></div><p>就是 proxychains 将链接转到了自己的 SOCKS 链接逻辑里的调用。这之后的一切就随 proxychains 操作了。</p><p>看到这里相信大家对 proxychains 如何做到让其他程序能够代理链接有一定认识了。那么还有一个小问题没有解答，在 ArchLinux 和其他一些发行版上使用 proxychains 的时候我们也没有手动设置 LD_PRELOAD 这个环境变量，他是如何被设置的呢? 这里我们只需要去看 <a href="https://web.archive.org/web/20210514123224/https://github.com/rofl0r/proxychains-ng/blob/1c8f8e4e7e31e64131f5f5e031f216b557f7b5ed/src/main.c#L139">https://github.com/rofl0r/proxychains-ng/blob/1c8f8e4e7e31e64131f5f5e031f216b557f7b5ed/src/main.c#L139</a></p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>#define LD\_PRELOAD\_ENV "LD\_PRELOAD"
+/* all historic implementations of BSD and linux dynlinkers seem to support
+   space as LD\_PRELOAD separator, with colon added only recently.
+   we use the old syntax for maximum compat */
+#define LD\_PRELOAD\_SEP " "
+#endif
+	char *old\_val = getenv(LD\_PRELOAD\_ENV);
+	snprintf(buf, sizeof(buf), LD\_PRELOAD\_ENV "=%s/%s%s%s",
+	         prefix, dll\_name,
+	         /* append previous LD\_PRELOAD content, if existent */
+	         old\_val ? LD\_PRELOAD\_SEP : "",
+	         old\_val ? old\_val : "");
+	putenv(buf);
+	execvp(argv[start\_argv], &amp;argv[start\_argv]);
+	perror("proxychains can't load process....");
+</code></pre></div></div><p>这里通过 putenv 设置了 LD_PRELOAD 的环境变量，然后执行了 execvp 调用命令行后面指定的程序。</p><p>通过上述 code reading 我们可以得出结论: <strong>proxychains 是通过 LD_PRELOAD 让自己在其他所有 shared library 之前被解析, 并导出 libc 的网络功能函数 connect, close, sendto, … 等函数, 通过此方法 hook libc API , 来达到让其他的程序能够通过其进行 SOCKS5 proxy 访问的效果</strong></p><p>那么我们来尝试一下吧~ 我们来 hook 一下 open 函数看看会出现什么事情</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>*
+ * Try to hook open function and disguise the system
+ *
+ */
+
+#include &lt;stdio.h&gt;
+#include &lt;errno.h&gt;
+#include &lt;sys/socket.h&gt;
+
+int open(const char *path, int oflag, ...) {
+    printf("Hooked open!\n");
+    return 1;
+}
+
+</code></pre></div></div><p>我们使用以下参数进行编译</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>gcc -fPIE -c open.c &amp;&amp; gcc -shared -o libopen.so open.o
+
+</code></pre></div></div><p>我们让 open 恒定返回 fd = 0 即为进程默认打开的标准输入 (/dev/pts) 我们执行 LD_PRELOAD=./libopen.so cat /usr/bin/vim 程序先是输出了一行 “Hooked open” 然后就 block 在了那里，好像在等待读入输入一样，而这个操作的原始行为应该是 cat 出来 /usr/bin/vim 这个 binary file 然后导致 terminal 乱码(逃 因而我们现在可以说，我们成功的 hook 了 libc 的函数 \w/ 感兴趣的朋友可以试试把上述代码的返回值修改为大于2的值，然后看看会发生什么。</p><p>Why Some Programs (e.g. Golang) Cannot Use It? The content is recoverd from Wordpress Blog, for more details please check <a href="recover-my-blog">HERE</a></p><p>通过上文我们知道了，很多的 golang 程序都是静态链接的程序，当然不涉及到任何 shared library preload, 对于这些程序来说我们没有办法让他们使用 proxychains.</p><p>但是最初的这个奇怪的报错是什么?</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>dial tcp 224.0.0.1:80: connect: network is unreachable
+</code></pre></div></div><p>我们 grep 224 发现这个的确出现在了 proxychains-ng 的代码中，而且还是一个 DNS 相关的变量, 我们可以猜测 对于涉及网络请求的golang程序，可能有一部分函数被 proxychains hook 了(Thanks to <a href="https://web.archive.org/web/20210514123224/https://ekyu.moe/">@Equim</a>)。为了验证我们的猜想，我们给 proxychains 的每一个 Hook 的函数加上调试输出，下面放出一个 demo 程序，分别使用 golang 的 http.Get 和 net.Dial 两个方式向 myip.ipip.net 请求自己的 IP 地址</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>package main
+
+import (
+	"bufio"
+	"fmt"
+	"io/ioutil"
+	"net"
+	"net/http"
+)
+
+func \_dial() {
+	conn, err := net.Dial("tcp", "myip.ipip.net:80")
+	if err != nil {
+		fmt.Printf("dial error: %s\n", err)
+		return
+	}
+
+	reqstr := "GET / HTTP/1.1\r\nHost: myip.ipip.net\r\nUser-Agent: curl/7.61.0\r\nAccept: */*\r\n\r\n"
+	\_, err = fmt.Fprintf(conn, reqstr)
+	if err != nil {
+		fmt.Printf("read error: %s\n", err)
+		return
+	}
+	b := make([]byte, 100000)
+	\_, err = bufio.NewReader(conn).Read(b)
+	if err != nil {
+		fmt.Printf("read error: %s\n", err)
+		return
+	}
+
+	fmt.Printf("%s\n", b)
+}
+
+func \_http() {
+	resp, err := http.Get("http://myip.ipip.net")
+	if err != nil {
+		fmt.Printf("http.get: %s", err)
+		return
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Printf("readall: %s", err)
+		return
+	}
+	fmt.Printf("%s", body)
+}
+
+func main() {
+	println("DIAL")
+	\_dial()
+	println("HTTP")
+	\_http()
+}
+
+</code></pre></div></div><p>我们使用 go build 上面的代码 -&gt; demo 然后 通过增加了调试信息的 Proxychains 执行 demo 得到如下输出:</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>╰─(´・ω・)つ  ./proxychains4 -q ~/playground/go/go\_connect/go\_connect\_gc
+DIAL
+DBG: getaddrinfo
+...
+DBG: freeaddrinfo
+dial error: dial tcp 224.0.0.1:80: connect: network is unreachable
+HTTP
+DBG: getaddrinfo
+...
+DBG: freeaddrinfo
+http.get: Get http://myip.ipip.net: dial tcp 224.0.0.1:80: connect: network is unreachable%
+</code></pre></div></div><p>我们发现，这个 demo 程序的 getaddrinfo 和 freeaddrinfo 被 hook 到了 proxychains 其他函数没有。因而我们的猜想得到了验证，具体可以去参考 golang source code (这里暂时不进行讨论)</p><p>A Way For Golang Programs to Use Proxychains The content is recoverd from Wordpress Blog, for more details please check <a href="recover-my-blog">HERE</a></p><p>这个问题的答案就是使用 <a href="https://web.archive.org/web/20210514123224/https://golang.org/doc/install/gccgo">gccgo</a></p><p>我们先来看效果</p><p>不使用 proxychains 直接运行 编译得到的 demo</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>DIAL
+HTTP/1.1 200 OK
+Date: Tue, 14 Aug 2018 13:09:06 GMT
+Content-Type: text/plain; charset=utf-8
+Content-Length: 67
+Connection: keep-alive
+X-Via-JSL: dca9b80,-
+Set-Cookie: \_\_jsluid=xxxxxxxxxxxxxxxxxxxxxxxxxxx; max-age=31536000; path=/; HttpOnly
+X-Cache: bypass
+
+当前 IP：*.*.*.*  来自于：中国 XXXXXXXXXXXXXXXXXXX
+
+HTTP
+当前 IP：*.*.*.*  来自于：中国 XXXXXXXXXXXXXXXXXXX
+
+</code></pre></div></div><p>使用 proxychains 代理后</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>DIAL
+HTTP/1.1 200 OK
+Date: Tue, 14 Aug 2018 13:10:09 GMT
+Content-Type: text/plain; charset=utf-8
+Content-Length: 73
+Connection: keep-alive
+Set-Cookie: \_\_cfduid=xxxxxxxxxxxxxxxxxxxxxxx; expires=Wed, 14-Aug-19 13:10:09 GMT; path=/; domain=.ipip.net; HttpOnly
+Server: cloudflare
+CF-RAY: 4xxxxxxxxxxxxxxx-NRT
+
+当前 IP：*.*.*.*  来自于：日本  XXXXXXXXXXXXXXXXXX
+
+HTTP 
+当前 IP：*.*.*.*  来自于：日本 XXXXXXXXXXXXXXXXXX
+</code></pre></div></div><p>可以看出，这次 proxychains 生效了! Hooray</p><p>那么为什么生效了呢?</p><p>我们对比两个不同 compiler 编译出来的 go binary 的 shared library 可以发现</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>╰─(´・ω・)つ  ldd go\_connect\_shared go\_connect\_gc 
+go\_connect\_shared:
+        linux-vdso.so.1 (0x00007ffdcdf00000)
+        libgo.so.13 =&gt; /usr/lib/libgo.so.13 (0x00007f368872e000)
+        libm.so.6 =&gt; /usr/lib/libm.so.6 (0x00007f36885a9000)
+        libgcc\_s.so.1 =&gt; /usr/lib/libgcc\_s.so.1 (0x00007f368858f000)
+        libc.so.6 =&gt; /usr/lib/libc.so.6 (0x00007f36883cb000)
+        /lib64/ld-linux-x86-64.so.2 =&gt; /usr/lib64/ld-linux-x86-64.so.2 (0x00007f3689fe6000)
+        libz.so.1 =&gt; /usr/lib/libz.so.1 (0x00007f36881b4000)
+        libpthread.so.0 =&gt; /usr/lib/libpthread.so.0 (0x00007f3688193000)
+go\_connect\_gc:
+        linux-vdso.so.1 (0x00007ffe4bf5f000)
+        libpthread.so.0 =&gt; /usr/lib/libpthread.so.0 (0x00007fb99f7d6000)
+        libc.so.6 =&gt; /usr/lib/libc.so.6 (0x00007fb99f612000)
+        /lib64/ld-linux-x86-64.so.2 =&gt; /usr/lib64/ld-linux-x86-64.so.2 (0x00007fb99f858000)
+
+</code></pre></div></div><p>他们两个都 link 了 libc(内含有 connect 函数) 为什么一个会接受 proxy 一个不能呢? 猜测可以是, connect 函数在 gc compiler 版的 go 中调用的不是 libc 的 connect, 而在 gccgo 里则是调用了这个 我们需要通过阅读源码来弄清楚 connect 函数是来自哪里的。</p><h2 id="gcgo-compiler下的调用">GC(Go Compiler)下的调用</h2><p>我们先来看 connect 在 gc (我们熟知的默认 go compiler) 下 connect 的调用链路:</p><p>在 &lt;go_src&gt;/src/syscall 下有一系列的 syscall 文件, 对于 Linux 64 bit 我们仅需要看 src/syscall/syscall_linux_amd64.go 这个文件，这里我们发现了</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>//sys	Statfs(path string, buf *Statfs\_t) (err error)
+//sys	SyncFileRange(fd int, off int64, n int64, flags int) (err error)
+//sys	Truncate(path string, length int64) (err error)
+//sys	accept(s int, rsa *RawSockaddrAny, addrlen *\_Socklen) (fd int, err error)
+//sys	accept4(s int, rsa *RawSockaddrAny, addrlen *\_Socklen, flags int) (fd int, err error)
+//sys	bind(s int, addr unsafe.Pointer, addrlen \_Socklen) (err error)
+//sys	connect(s int, addr unsafe.Pointer, addrlen \_Socklen) (err error)
+//sys	fstatat(fd int, path string, stat *Stat\_t, flags int) (err error) = SYS\_NEWFSTATAT
+//sysnb	getgroups(n int, list *\_Gid\_t) (nn int, err error)
+//sysnb	setgroups(n int, list *\_Gid\_t) (err error)
+//sys	getsockopt(s int, level int, name int, val unsafe.Pointer, vallen *\_Socklen) (err error)
+//sys	setsockopt(s int, level int, name int, val unsafe.Pointer, vallen uintptr) (err error)
+//sysnb	socket(domain int, typ int, proto int) (fd int, err error)
+//sysnb	socketpair(domain int, typ int, proto int, fd *[2]int32) (err error)
+//sysnb	getpeername(fd int, rsa *RawSockaddrAny, addrlen *\_Socklen) (err error)
+//sysnb	getsockname(fd int, rsa *RawSockaddrAny, addrlen *\_Socklen) (err error)
+//sys	recvfrom(fd int, p []byte, flags int, from *RawSockaddrAny, fromlen *\_Socklen) (n int, err error)
+</code></pre></div></div><p>这样一段含有 connect 的签名的注释，每一行的 //sys //sysnb 会被 perl 脚本 src/syscall/mksyscall.pl 给展开， connect 展开后是这样的</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>func connect(s int, addr unsafe.Pointer, addrlen \_Socklen) (err error) {
+        \_, \_, e1 := Syscall(SYS\_CONNECT, uintptr(s), uintptr(addr), uintptr(addrlen))
+        if e1 != 0 {
+                err = errnoErr(e1)
+        }
+        return
+}
+</code></pre></div></div><p>查看 Syscall 的实现 我们跟踪到了 src/syscall/asm_linux_amd64.s 内的代码</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>TEXT ·Syscall(SB),NOSPLIT,$0-56
+	CALL	runtime·entersyscall(SB)
+	MOVQ	a1+8(FP), DI
+	MOVQ	a2+16(FP), SI
+	MOVQ	a3+24(FP), DX
+	MOVQ	$0, R10
+	MOVQ	$0, R8
+	MOVQ	$0, R9
+	MOVQ	trap+0(FP), AX	// syscall entry
+	SYSCALL
+	CMPQ	AX, $0xfffffffffffff001
+	JLS	ok
+	MOVQ	$-1, r1+32(FP)
+	MOVQ	$0, r2+40(FP)
+	NEGQ	AX
+	MOVQ	AX, err+48(FP)
+	CALL	runtime·exitsyscall(SB)
+	RET
+ok:
+	MOVQ	AX, r1+32(FP)
+	MOVQ	DX, r2+40(FP)
+	MOVQ	$0, err+48(FP)
+	CALL	runtime·exitsyscall(SB)
+	RET
+</code></pre></div></div><p>可以看到这里是通过直接调用 syscall 进行了系统调用，而非使用了 libc 提供的 connect 函数。因而我们在这种情况下是无法让 connect 被 proxychains 给 hook 的</p><h2 id="gccgo-下的调用">GCCGO 下的调用</h2><p>我们再来看一下 gccgo 对 connect 的调用链路:</p><p>在 gccgo/libgo/go/syscall 下我们查看文件 socket_posix.go 可以看到</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>//sys   bind(fd int, sa *RawSockaddrAny, len Socklen\_t) (err error)
+//bind(fd \_C\_int, sa *RawSockaddrAny, len Socklen\_t) \_C\_int
+
+//sys   connect(s int, addr *RawSockaddrAny, addrlen Socklen\_t) (err error)
+//connect(s \_C\_int, addr *RawSockaddrAny, addrlen Socklen\_t) \_C\_int
+
+</code></pre></div></div><p>同样，这段代码也会被一个 mksyscall.awk 的宏展开为:</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>// Automatically generated wrapper for connect/connect
+//extern connect
+func c\_connect(s \_C\_int, addr *RawSockaddrAny, addrlen Socklen\_t) \_C\_int
+func connect(s int, addr *RawSockaddrAny, addrlen Socklen\_t) (err error) {
+        Entersyscall()
+        \_r := c\_connect(\_C\_int(s), addr, Socklen\_t(addrlen))
+        var errno Errno
+        setErrno := false
+        if \_r &lt; 0 {
+                errno = GetErrno()
+                setErrno = true
+        }
+        Exitsyscall()
+        if setErrno {
+                err = errno
+        }
+        return
+}
+
+</code></pre></div></div><p>我们可以看到, 这里使用了 extern directive 将函数 c_connect 引用指向了外部的 connect 符号,  通过查看 libgo 的依赖关系(ldd) 我们发现 libgo 依赖 libc, libc 提供了 connect 因而 gccgo 编译出来的程序的 connect 是通过 libc 调用，而不是内部自行解决了，所以我们可以通过 proxychains 来进行 hook。</p><h2 id="验证">验证</h2><p>最后再来验证一下我们的这个结论。  对于查看 shared lib 的相关内部过程，可以用一个神奇的环境变量 LD_DEBUG, 我们使用 LD_DEBUG=bindings 来展示出每一个符号的 bind 过程，查看两个不同的 go compiler 编译出的程序在 symbol resolution 时有什么不同。（都已经使用 LD_PRELOAD preload 了 libproxychains4.so )</p><p><img src="https://web.archive.org/web/20210514123224im_/https://void-shana.moe/wp-content/uploads/2018/08/gcc-1-1024x292.png" alt="" />For GCCGO <img src="https://web.archive.org/web/20210514123224im_/https://void-shana.moe/wp-content/uploads/2018/08/gc-1-1024x374.png" alt="" />For GC 我们可以看出，在 gccgo 编译的版本中， libgo 需要的外部 symbol connect 被 bind 到了 GLIBC connect 而在 gc 编译的版本中则不存在这样的 binding. 因而我们得出结论 gccgo 编译的代码可以被 proxychain hook</p><p>Reference The content is recoverd from Wordpress Blog, for more details please check <a href="recover-my-blog">HERE</a></p><ul><li>ld-linux man page</li><li>dlsym(3) man page</li><li>http://tldp.org/HOWTO/Program-Library-HOWTO/shared-libraries.html</li><li>https://github.com/rofl0r/proxychains-ng</li></ul><p>Misc The content is recoverd from Wordpress Blog, for more details please check <a href="recover-my-blog">HERE</a></p><p>遗留问题: 在查看 LD_DEBUG=bindings 的时候，我们可以看到这样一段奇怪的 bind: binding file /usr/lib/libproxychains4.so [0] to /usr/lib/libpthread.so.0 [0]: normal symbol `connect’ proxychains 的 connect 竟然 bind 到了 libpthread 上，这让我很费解，尝试了 LD_DEBUG 看 curl 的 binding 也是最后到了 libpthread 上，这里就让我产生了一个悬而未解的问题: 莫非 proxychains 不仅仅 hook 了 libc 还 hook 了 libpthread? 我查看了 LD_DEBUG=1 curl xxx.cn 的输出，发现所有的 connect symbol 都是解析到了 libpthread.so 上，也许，所有的 connect 都没有走 libc 而是走了 libpthread?z 这就是另一个问题了。</p><p>后记: 因为最近在准备出国留学，备考申请事情多得很忙，几乎没有多少时间来研究技术，因而博客搁置的时间远比 3 个月长，甚至有的朋友留言说博主已经凉了，在此对大家的关注表示感谢，因为很多事情导致了博客没有更新。在备考结束后博客还会保持以前的进度持续更新的。同时感谢 <a href="https://web.archive.org/web/20210514123224/https://ekyu.moe/">@Equim</a> 在撰写本文时提供的种种帮助，关于她说的另一个问题我在这里没有讲到，也是和 proxychains 有关的一个问题，链接在这里: <a href="https://web.archive.org/web/20210514123224/https://hackerone.com/reports/361269">https://hackerone.com/reports/361269</a> 感兴趣的各位可以去看看</p><p>然后我就要继续去准备 GRE 了(x</p><hr /><p><a href="https://web.archive.org/web/20210514123224/https://void-shana.moe/category/linux/c">C</a>, <a href="https://web.archive.org/web/20210514123224/https://void-shana.moe/category/linux/kernel-linux">Kernel</a>, <a href="https://web.archive.org/web/20210514123224/https://void-shana.moe/category/linux">Linux</a> <a href="https://web.archive.org/web/20210514123224/https://void-shana.moe/tag/c">C</a>, <a href="https://web.archive.org/web/20210514123224/https://void-shana.moe/tag/kernel">kernel</a>, <a href="https://web.archive.org/web/20210514123224/https://void-shana.moe/tag/linux">linux</a></p><hr /><h2 id="historical-comments">Historical Comments</h2><ol><li><p><img src="https://web.archive.org/web/20210514123224im_/https://secure.gravatar.com/avatar/13b998737e96dd10135326cacc26985c?s=50&amp;d=identicon&amp;r=g" alt="" /> <strong>ZackXu</strong> says: <a href="https://web.archive.org/web/20210514123224/https://void-shana.moe/linux/proxychains-ng.html#comment-443">August 14, 2018 at 5:07 pm</a> 娜娜更新了！</p><ol><li><img src="https://web.archive.org/web/20210514123224im_/https://secure.gravatar.com/avatar/5612f7d51961a8e49efb43a5e4cf18a6?s=50&amp;d=identicon&amp;r=g" alt="" /> <strong>VOID001</strong> says: <a href="https://web.archive.org/web/20210514123224/https://void-shana.moe/linux/proxychains-ng.html#comment-446">August 15, 2018 at 10:20 am</a> 终于更新了(x</li></ol></li><li><p><img src="https://web.archive.org/web/20210514123224im_/https://secure.gravatar.com/avatar/1896080d53de450a79795654ceac2dbb?s=50&amp;d=identicon&amp;r=g" alt="" /> <strong><a href="https://web.archive.org/web/20210514123224/https://thunix.org/~neo_chen/">Neo_Chen</a></strong> says: <a href="https://web.archive.org/web/20210514123224/https://void-shana.moe/linux/proxychains-ng.html#comment-444">August 14, 2018 at 8:53 pm</a> 終於更新了，耶！</p><ol><li><img src="https://web.archive.org/web/20210514123224im_/https://secure.gravatar.com/avatar/5612f7d51961a8e49efb43a5e4cf18a6?s=50&amp;d=identicon&amp;r=g" alt="" /> <strong>VOID001</strong> says: <a href="https://web.archive.org/web/20210514123224/https://void-shana.moe/linux/proxychains-ng.html#comment-447">August 15, 2018 at 10:21 am</a> 最近好忙QvQ</li></ol></li><li><p><img src="https://web.archive.org/web/20210514123224im_/https://secure.gravatar.com/avatar/e466883dea9a8b501f9788066cd021de?s=50&amp;d=identicon&amp;r=g" alt="" /> <strong><a href="https://web.archive.org/web/20210514123224/https://ikk.me/">kookxiang</a></strong> says: <a href="https://web.archive.org/web/20210514123224/https://void-shana.moe/linux/proxychains-ng.html#comment-445">August 15, 2018 at 9:59 am</a> 夏娜大佬！跪了</p><ol><li><img src="https://web.archive.org/web/20210514123224im_/https://secure.gravatar.com/avatar/5612f7d51961a8e49efb43a5e4cf18a6?s=50&amp;d=identicon&amp;r=g" alt="" /> <strong>VOID001</strong> says: <a href="https://web.archive.org/web/20210514123224/https://void-shana.moe/linux/proxychains-ng.html#comment-448">August 15, 2018 at 10:22 am</a> kk 才是大佬! 我是萌新!</li></ol></li><li><p><img src="https://web.archive.org/web/20210514123224im_/https://secure.gravatar.com/avatar/5612f7d51961a8e49efb43a5e4cf18a6?s=50&amp;d=identicon&amp;r=g" alt="" /> <strong>VOID001</strong> says: <a href="https://web.archive.org/web/20210514123224/https://void-shana.moe/linux/proxychains-ng.html#comment-450">August 15, 2018 at 10:50 pm</a> 现在不是草稿了呀，是因为当时手残点错了(</p></li><li><p><img src="https://web.archive.org/web/20210514123224im_/https://secure.gravatar.com/avatar/64718fe14af5b212ad2428ce59affcb2?s=50&amp;d=identicon&amp;r=g" alt="" /> <strong><a href="https://web.archive.org/web/20210514123224/https://huihui.moe/">灰灰</a></strong> says: <a href="https://web.archive.org/web/20210514123224/https://void-shana.moe/linux/proxychains-ng.html#comment-461">August 20, 2018 at 12:53 pm</a> 好耶！博主热了！</p><ol><li><img src="https://web.archive.org/web/20210514123224im_/https://secure.gravatar.com/avatar/5612f7d51961a8e49efb43a5e4cf18a6?s=50&amp;d=identicon&amp;r=g" alt="" /> <strong>VOID001</strong> says: <a href="https://web.archive.org/web/20210514123224/https://void-shana.moe/linux/proxychains-ng.html#comment-462">August 20, 2018 at 12:57 pm</a> 好耶是灰灰! 扑(</li></ol></li><li><p><img src="https://web.archive.org/web/20210514123224im_/https://secure.gravatar.com/avatar/43fdc497850cead58be4e6219c7d96e8?s=50&amp;d=identicon&amp;r=g" alt="" /> <strong><a href="https://web.archive.org/web/20210514123224/https://a-wing.top/">a-wing</a></strong> says: <a href="https://web.archive.org/web/20210514123224/https://void-shana.moe/linux/proxychains-ng.html#comment-489">September 27, 2018 at 9:11 am</a> 夏娜姐姐好棒～</p><ol><li><img src="https://web.archive.org/web/20210514123224im_/https://secure.gravatar.com/avatar/5612f7d51961a8e49efb43a5e4cf18a6?s=50&amp;d=identicon&amp;r=g" alt="" /> <strong>VOID001</strong> says: <a href="https://web.archive.org/web/20210514123224/https://void-shana.moe/linux/proxychains-ng.html#comment-490">September 27, 2018 at 9:20 am</a> 好耶，是夏娜妹妹/</li></ol></li><li><p><img src="https://web.archive.org/web/20210514123224im_/https://secure.gravatar.com/avatar/3e3c1cb94b9ad3551cd9d43f2e52e105?s=50&amp;d=identicon&amp;r=g" alt="" /> <strong><a href="https://web.archive.org/web/20210514123224/https://blog.lilydjwg.me/">依云</a></strong> says: <a href="https://web.archive.org/web/20210514123224/https://void-shana.moe/linux/proxychains-ng.html#comment-517">January 31, 2019 at 10:37 pm</a> libpthread.so 确实包括了一份 connect，以及其他二三十个常见函数。在 glibc 的 glibc/nptl/Makefile 文件中可以看到，这些函数是为了兼容性才存在于 libpthread.so 里的。</p></li><li><p><img src="https://web.archive.org/web/20210514123224im_/https://secure.gravatar.com/avatar/3e3c1cb94b9ad3551cd9d43f2e52e105?s=50&amp;d=identicon&amp;r=g" alt="" /> <strong><a href="https://web.archive.org/web/20210514123224/https://blog.lilydjwg.me/">依云</a></strong> says: <a href="https://web.archive.org/web/20210514123224/https://void-shana.moe/linux/proxychains-ng.html#comment-517">January 31, 2019 at 10:37 pm</a> libpthread.so 确实包括了一份 connect，以及其他二三十个常见函数。在 glibc 的 glibc/nptl/Makefile 文件中可以看到，这些函数是为了兼容性才存在于 libpthread.so 里的。</p></li></ol><script src="https://giscus.app/client.js" data-repo="VOID001/VOID001.github.io" data-repo-id="MDEwOlJlcG9zaXRvcnkzMzI0MDI4NQ==" data-category="Announcements" data-category-id="DIC_kwDOAfs03c4COSSU" data-mapping="pathname" data-reactions-enabled="1" data-emit-metadata="1" data-input-position="top" data-theme="light" data-lang="en" data-loading="lazy" crossorigin="anonymous" async> </script></article><div class="back"> <a href="/">Back</a></div><script src="https://cdn.bootcdn.net/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script> <script>hljs.highlightAll();</script></main></body></html>

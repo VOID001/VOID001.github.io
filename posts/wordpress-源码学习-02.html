@@ -1,0 +1,1077 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1" /><title>WordPress 源码学习</title><meta name="twitter:card" content="summary" /><meta name="twitter:site" content="@" /><meta name="twitter:title" content="WordPress 源码学习" /><meta name="twitter:description" content="The content is recoverd from Wordpress Blog, for more details please check HERE"><meta name="description" content="The content is recoverd from Wordpress Blog, for more details please check HERE"><meta name="google-site-verification" content="epFgX0s_0RM3CdjwFcsewfXzPov2g8s9ZBOLyaIUH-o"><link rel="icon" href="/assets/favicon.png"><link rel="apple-touch-icon" href="/assets/touch-icon.png"><link rel="stylesheet" href="//code.cdn.mozilla.net/fonts/fira.css"><link rel="stylesheet" href="/assets/core.css"><link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.1.1/css/all.min.css" rel="stylesheet"><link href="https://cdn.bootcdn.net/ajax/libs/highlight.js/11.5.0/styles/github.min.css" rel="stylesheet"><link rel="canonical" href="/posts/wordpress-%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0-02"><link rel="alternate" type="application/atom+xml" title="VOID001's WOWO" href="/feed.xml" /> <script> (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){ (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o), m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m) })(window,document,'script','//www.google-analytics.com/analytics.js','ga'); ga( 'create', 'UA-73703130-2', 'auto' ); ga( 'send', 'pageview' ); </script></head><body><aside class="logo"> <a href="/"> <img src="/assets/avatar.jpeg" class="gravatar"> </a> <span class="logo-prompt">Back to Home</span></aside><div class="footer-flex" style="margin-bottom: 4px"> Thinking, Coding, Improving</div><div class="footer-flex" style="color: #333333"> <a href="http://github.com/VOID001"><i class="fa-brands fa-lg fa-github"></i></a> <span style="margin: 4px"></span> <a href="https://t.me/s/void001_fav"><i class="fa-brands fa-lg fa-telegram"></i></a> <span style="margin: 4px"></span> <a href="/feed"><i class="fa-solid fa-lg fa-rss"></i></a> <span style="margin: 4px"></span> <a href="/friends"><i class="fa-solid fa-lg fa-ship"></i></a></div><script src="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.1.1/js/fontawesome.min.js"></script><main> <noscript><style> article .footnotes { display: block; }</style></noscript><article><div class="center"><h1>WordPress 源码学习</h1><time>September 1, 2014</time> <span>[ ]</span></div><div class="divider"></div><p>The content is recoverd from Wordpress Blog, for more details please check <a href="recover-my-blog">HERE</a></p><h5 id="september-1-2014"><a href="https://web.archive.org/web/20210120185412/https://void-shana.moe/webdev/wordpress-%e6%ba%90%e7%a0%81%e5%ad%a6%e4%b9%a0-02.html" title="12:06 pm">September 1, 2014</a></h5><p><a href="https://web.archive.org/web/20210120185412/https://void-shana.moe/author/void001" title="View all posts by VOID001">VOID001</a> Comments <a href="https://web.archive.org/web/20210120185412/https://void-shana.moe/webdev/wordpress-%e6%ba%90%e7%a0%81%e5%ad%a6%e4%b9%a0-02.html#respond">0 Comment</a></p><p>继续研究WP的源码 ，在继续之前解释一下昨天的wp-config里面的前面几个常量的定义  由于我用的是SAE 所以 数据库名 ，用户名 神码的都是SAE预设的 常量 就不用我自己去起名了 ，好了我们继续  这一期开始就要看wp-settings.php这个文件了</p><p>先上代码：</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&lt;?php
+/**
+ * Used to set up and fix common variables and include
+ * the WordPress procedural and class library.
+ *
+ * Allows for some configuration in wp-config.php (see default-constants.php)
+ *
+ * @internal This file must be parsable by PHP4.
+ *
+ * @modified Elmer Zhang &lt;[[email protected]](/web/20210120185412/https://void-shana.moe/cdn-cgi/l/email-protection)&gt;
+ * @package WordPress
+ */
+
+/**
+ * Stores the location of the WordPress directory of functions, classes, and core content.
+ *
+ * @since 1.0.0
+ */
+define( 'WPINC', 'wp-includes' );
+
+// Include files required for initialization.
+require( ABSPATH . WPINC . '/load.php' );
+require( ABSPATH . WPINC . '/default-constants.php' );
+require( ABSPATH . WPINC . '/version.php' );
+
+// Set initial default constants including WP\_MEMORY\_LIMIT, WP\_MAX\_MEMORY\_LIMIT, WP\_DEBUG, WP\_CONTENT\_DIR and WP\_CACHE.
+wp\_initial\_constants( );
+
+// Check for the required PHP version and for the MySQL extension or a database drop-in.
+wp\_check\_php\_mysql\_versions();
+
+// Disable magic quotes at runtime. Magic quotes are added using wpdb later in wp-settings.php.
+@ini\_set( 'magic\_quotes\_runtime', 0 );
+@ini\_set( 'magic\_quotes\_sybase',  0 );
+
+// Set default timezone in PHP 5.
+if ( function\_exists( 'date\_default\_timezone\_set' ) )
+	date\_default\_timezone\_set( 'UTC' );
+
+// Turn register\_globals off.
+wp\_unregister\_GLOBALS();
+
+// Ensure these global variables do not exist so they do not interfere with WordPress.
+unset( $wp\_filter, $cache\_lastcommentmodified );
+
+// Standardize $\_SERVER variables across setups.
+wp\_fix\_server\_vars();
+
+// Check if we have received a request due to missing favicon.ico
+wp\_favicon\_request();
+
+// Check if we're in maintenance mode.
+wp\_maintenance();
+
+// Start loading timer.
+timer\_start();
+
+// Check if we're in WP\_DEBUG mode.
+wp\_debug\_mode();
+
+// For an advanced caching plugin to use. Uses a static drop-in because you would only want one.
+if ( WP\_CACHE )
+	WP\_DEBUG ? include( WP\_CONTENT\_DIR . '/advanced-cache.php' ) : @include( WP\_CONTENT\_DIR . '/advanced-cache.php' );
+
+// Define WP\_LANG\_DIR if not set.
+wp\_set\_lang\_dir();
+
+// Load early WordPress files.
+require( ABSPATH . WPINC . '/compat.php' );
+require( ABSPATH . WPINC . '/functions.php' );
+require( ABSPATH . WPINC . '/class-wp.php' );
+require( ABSPATH . WPINC . '/class-wp-error.php' );
+require( ABSPATH . WPINC . '/plugin.php' );
+require( ABSPATH . WPINC . '/pomo/mo.php' );
+
+// Include the wpdb class and, if present, a db.php database drop-in.
+require\_wp\_db();
+
+// Set the database table prefix and the format specifiers for database table columns.
+$GLOBALS['table\_prefix'] = $table\_prefix;
+wp\_set\_wpdb\_vars();
+
+// Start the WordPress object cache, or an external object cache if the drop-in is present.
+wp\_start\_object\_cache();
+
+// Attach the default filters.
+require( ABSPATH . WPINC . '/default-filters.php' );
+
+// Initialize multisite if enabled.
+if ( is\_multisite() ) {
+	require( ABSPATH . WPINC . '/ms-blogs.php' );
+	require( ABSPATH . WPINC . '/ms-settings.php' );
+} elseif ( ! defined( 'MULTISITE' ) ) {
+	define( 'MULTISITE', false );
+}
+
+register\_shutdown\_function( 'shutdown\_action\_hook' );
+
+// Stop most of WordPress from being loaded if we just want the basics.
+if ( SHORTINIT )
+	return false;
+
+// Load the L10n library.
+require\_once( ABSPATH . WPINC . '/l10n.php' );
+
+// Run the installer if WordPress is not installed.
+wp\_not\_installed();
+
+// Load most of WordPress.
+require( ABSPATH . WPINC . '/class-wp-walker.php' );
+require( ABSPATH . WPINC . '/class-wp-ajax-response.php' );
+require( ABSPATH . WPINC . '/formatting.php' );
+require( ABSPATH . WPINC . '/capabilities.php' );
+require( ABSPATH . WPINC . '/query.php' );
+require( ABSPATH . WPINC . '/theme.php' );
+require( ABSPATH . WPINC . '/class-wp-theme.php' );
+require( ABSPATH . WPINC . '/template.php' );
+require( ABSPATH . WPINC . '/user.php' );
+require( ABSPATH . WPINC . '/meta.php' );
+require( ABSPATH . WPINC . '/general-template.php' );
+require( ABSPATH . WPINC . '/link-template.php' );
+require( ABSPATH . WPINC . '/author-template.php' );
+require( ABSPATH . WPINC . '/post.php' );
+require( ABSPATH . WPINC . '/post-template.php' );
+require( ABSPATH . WPINC . '/post-thumbnail-template.php' );
+require( ABSPATH . WPINC . '/category.php' );
+require( ABSPATH . WPINC . '/category-template.php' );
+require( ABSPATH . WPINC . '/comment.php' );
+require( ABSPATH . WPINC . '/comment-template.php' );
+require( ABSPATH . WPINC . '/rewrite.php' );
+require( ABSPATH . WPINC . '/feed.php' );
+require( ABSPATH . WPINC . '/bookmark.php' );
+require( ABSPATH . WPINC . '/bookmark-template.php' );
+require( ABSPATH . WPINC . '/kses.php' );
+require( ABSPATH . WPINC . '/cron.php' );
+require( ABSPATH . WPINC . '/deprecated.php' );
+require( ABSPATH . WPINC . '/script-loader.php' );
+require( ABSPATH . WPINC . '/taxonomy.php' );
+require( ABSPATH . WPINC . '/update.php' );
+require( ABSPATH . WPINC . '/canonical.php' );
+require( ABSPATH . WPINC . '/shortcodes.php' );
+require( ABSPATH . WPINC . '/media.php' );
+require( ABSPATH . WPINC . '/http.php' );
+require( ABSPATH . WPINC . '/class-http.php' );
+require( ABSPATH . WPINC . '/widgets.php' );
+require( ABSPATH . WPINC . '/nav-menu.php' );
+require( ABSPATH . WPINC . '/nav-menu-template.php' );
+require( ABSPATH . WPINC . '/admin-bar.php' );
+
+// Load multisite-specific files.
+if ( is\_multisite() ) {
+	require( ABSPATH . WPINC . '/ms-functions.php' );
+	require( ABSPATH . WPINC . '/ms-default-filters.php' );
+	require( ABSPATH . WPINC . '/ms-deprecated.php' );
+}
+
+// Define constants that rely on the API to obtain the default value.
+// Define must-use plugin directory constants, which may be overridden in the sunrise.php drop-in.
+wp\_plugin\_directory\_constants( );
+
+// Load must-use plugins.
+foreach ( wp\_get\_mu\_plugins() as $mu\_plugin ) {
+	include\_once( $mu\_plugin );
+}
+unset( $mu\_plugin );
+
+// Load network activated plugins.
+if ( is\_multisite() ) {
+	foreach( wp\_get\_active\_network\_plugins() as $network\_plugin ) {
+		include\_once( $network\_plugin );
+	}
+	unset( $network\_plugin );
+}
+
+do\_action( 'muplugins\_loaded' );
+
+if ( is\_multisite() )
+	ms\_cookie\_constants(  );
+
+// Define constants after multisite is loaded. Cookie-related constants may be overridden in ms\_network\_cookies().
+wp\_cookie\_constants( );
+
+// Define and enforce our SSL constants
+wp\_ssl\_constants( );
+
+// Create common globals.
+require( ABSPATH . WPINC . '/vars.php' );
+
+// Make taxonomies and posts available to plugins and themes.
+// @plugin authors: warning: these get registered again on the init hook.
+create\_initial\_taxonomies();
+create\_initial\_post\_types();
+
+// Register the default theme directory root
+register\_theme\_directory( get\_theme\_root() );
+
+// Load active plugins.
+foreach ( wp\_get\_active\_and\_valid\_plugins() as $plugin )
+	include\_once( $plugin );
+unset( $plugin );
+
+// Load pluggable functions.
+require( ABSPATH . WPINC . '/pluggable.php' );
+require( ABSPATH . WPINC . '/pluggable-deprecated.php' );
+
+// Set internal encoding.
+wp\_set\_internal\_encoding();
+
+// Run wp\_cache\_postload() if object cache is enabled and the function exists.
+if ( WP\_CACHE &amp;&amp; function\_exists( 'wp\_cache\_postload' ) )
+	wp\_cache\_postload();
+
+do\_action( 'plugins\_loaded' );
+
+// Define constants which affect functionality if not already defined.
+wp\_functionality\_constants( );
+
+// Add magic quotes and set up $\_REQUEST ( $\_GET + $\_POST )
+wp\_magic\_quotes();
+
+do\_action( 'sanitize\_comment\_cookies' );
+
+/**
+ * WordPress Query object
+ * @global object $wp\_the\_query
+ * @since 2.0.0
+ */
+$wp\_the\_query = new WP\_Query();
+
+/**
+ * Holds the reference to @see $wp\_the\_query
+ * Use this global for WordPress queries
+ * @global object $wp\_query
+ * @since 1.5.0
+ */
+$wp\_query =&amp; $wp\_the\_query;
+
+/**
+ * Holds the WordPress Rewrite object for creating pretty URLs
+ * @global object $wp\_rewrite
+ * @since 1.5.0
+ */
+$GLOBALS['wp\_rewrite'] = new WP\_Rewrite();
+
+/**
+ * WordPress Object
+ * @global object $wp
+ * @since 2.0.0
+ */
+$wp = new WP();
+
+/**
+ * WordPress Widget Factory Object
+ * @global object $wp\_widget\_factory
+ * @since 2.8.0
+ */
+$GLOBALS['wp\_widget\_factory'] = new WP\_Widget\_Factory();
+
+do\_action( 'setup\_theme' );
+
+// Define the template related constants.
+wp\_templating\_constants(  );
+
+// Load the default text localization domain.
+load\_default\_textdomain();
+
+$locale = get\_locale();
+$locale\_file = WP\_LANG\_DIR . "/$locale.php";
+if ( ( 0 The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog) validate\_file( $locale ) ) &amp;&amp; is\_readable( $locale\_file ) )
+	require( $locale\_file );
+unset( $locale\_file );
+
+// Pull in locale data after loading text domain.
+require\_once( ABSPATH . WPINC . '/locale.php' );
+
+/**
+ * WordPress Locale object for loading locale domain date and various strings.
+ * @global object $wp\_locale
+ * @since 2.1.0
+ */
+$GLOBALS['wp\_locale'] = new WP\_Locale();
+
+// Load the functions for the active theme, for both parent and child theme if applicable.
+if ( ! defined( 'WP\_INSTALLING' ) || 'wp-activate.php' The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog) $pagenow ) {
+	if ( TEMPLATEPATH !The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog) STYLESHEETPATH &amp;&amp; file\_exists( STYLESHEETPATH . '/functions.php' ) )
+		include( STYLESHEETPATH . '/functions.php' );
+	if ( file\_exists( TEMPLATEPATH . '/functions.php' ) )
+		include( TEMPLATEPATH . '/functions.php' );
+}
+
+do\_action( 'after\_setup\_theme' );
+
+// Set up current user.
+$wp-&gt;init();
+
+/**
+ * Most of WP is loaded at this stage, and the user is authenticated. WP continues
+ * to load on the init hook that follows (e.g. widgets), and many plugins instantiate
+ * themselves on it for all sorts of reasons (e.g. they need a user, a taxonomy, etc.).
+ *
+ * If you wish to plug an action once WP is loaded, use the wp\_loaded hook below.
+ */
+do\_action( 'init' );
+
+// Check site status
+if ( is\_multisite() ) {
+	if ( true !The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog) ( $file = ms\_site\_check() ) ) {
+		require( $file );
+		die();
+	}
+	unset($file);
+}
+
+/**
+ * This hook is fired once WP, all plugins, and the theme are fully loaded and instantiated.
+ *
+ * AJAX requests should use wp-admin/admin-ajax.php. admin-ajax.php can handle requests for
+ * users not logged in.
+ *
+ * @link http://codex.wordpress.org/AJAX\_in\_Plugins
+ *
+ * @since 3.0.0
+ */
+do\_action('wp\_loaded');
+</code></pre></div></div><p>代码比较复杂，实现的功能也很多，不过代码的注释很清晰 ，我们一点点看</p><p>这个代码的作用就是设定好WP常量 以及包含WP的类库和过程库(函数库)</p><p>为了更好的研究PHP代码安装了Zend Studio这里给一个<a href="https://web.archive.org/web/20210120185412/http://www.zendstudio.net/zend-studio-all-in-one-download/">好用的下载地址</a>     首先 ，加载了初始化需要的文件位于wp-includes文件夹下的 load default-constants version 三个PHP文件 我们先去看看 load.php这个文件</p><p>下面是load.php这个文件的代码:</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&lt;?php
+/**
+ * These functions are needed to load WordPress.
+ *
+ * @internal This file must be parsable by PHP4.
+ *
+ * @package WordPress
+ */
+
+/**
+ * Turn register globals off.
+ *
+ * @access private
+ * @since 2.1.0
+ * @return null Will return null if register\_globals PHP directive was disabled
+ */
+function wp\_unregister\_GLOBALS() {
+	if ( !ini\_get( 'register\_globals' ) )
+		return;
+
+	if ( isset( $\_REQUEST['GLOBALS'] ) )
+		die( 'GLOBALS overwrite attempt detected' );
+
+	// Variables that shouldn't be unset
+	$no\_unset = array( 'GLOBALS', '\_GET', '\_POST', '\_COOKIE', '\_REQUEST', '\_SERVER', '\_ENV', '\_FILES', 'table\_prefix' );
+
+	$input = array\_merge( $\_GET, $\_POST, $\_COOKIE, $\_SERVER, $\_ENV, $\_FILES, isset( $\_SESSION ) &amp;&amp; is\_array( $\_SESSION ) ? $\_SESSION : array() );
+	foreach ( $input as $k =&gt; $v )
+		if ( !in\_array( $k, $no\_unset ) &amp;&amp; isset( $GLOBALS[$k] ) ) {
+			$GLOBALS[$k] = null;
+			unset( $GLOBALS[$k] );
+		}
+}
+
+/**
+ * Fix $\_SERVER variables for various setups.
+ *
+ * @access private
+ * @since 3.0.0
+ */
+function wp\_fix\_server\_vars() {
+	global $PHP\_SELF;
+
+	$default\_server\_values = array(
+		'SERVER\_SOFTWARE' =&gt; '',
+		'REQUEST\_URI' =&gt; '',
+	);
+
+	$\_SERVER = array\_merge( $default\_server\_values, $\_SERVER );
+
+	// Fix for IIS when running with PHP ISAPI
+	if ( empty( $\_SERVER['REQUEST\_URI'] ) || ( php\_sapi\_name() != 'cgi-fcgi' &amp;&amp; preg\_match( '/^Microsoft-IIS//', $\_SERVER['SERVER\_SOFTWARE'] ) ) ) {
+
+		// IIS Mod-Rewrite
+		if ( isset( $\_SERVER['HTTP\_X\_ORIGINAL\_URL'] ) ) {
+			$\_SERVER['REQUEST\_URI'] = $\_SERVER['HTTP\_X\_ORIGINAL\_URL'];
+		}
+		// IIS Isapi\_Rewrite
+		else if ( isset( $\_SERVER['HTTP\_X\_REWRITE\_URL'] ) ) {
+			$\_SERVER['REQUEST\_URI'] = $\_SERVER['HTTP\_X\_REWRITE\_URL'];
+		} else {
+			// Use ORIG\_PATH\_INFO if there is no PATH\_INFO
+			if ( !isset( $\_SERVER['PATH\_INFO'] ) &amp;&amp; isset( $\_SERVER['ORIG\_PATH\_INFO'] ) )
+				$\_SERVER['PATH\_INFO'] = $\_SERVER['ORIG\_PATH\_INFO'];
+
+			// Some IIS + PHP configurations puts the script-name in the path-info (No need to append it twice)
+			if ( isset( $\_SERVER['PATH\_INFO'] ) ) {
+				if ( $\_SERVER['PATH\_INFO'] The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog) $\_SERVER['SCRIPT\_NAME'] )
+					$\_SERVER['REQUEST\_URI'] = $\_SERVER['PATH\_INFO'];
+				else
+					$\_SERVER['REQUEST\_URI'] = $\_SERVER['SCRIPT\_NAME'] . $\_SERVER['PATH\_INFO'];
+			}
+
+			// Append the query string if it exists and isn't null
+			if ( ! empty( $\_SERVER['QUERY\_STRING'] ) ) {
+				$\_SERVER['REQUEST\_URI'] .= '?' . $\_SERVER['QUERY\_STRING'];
+			}
+		}
+	}
+
+	// Fix for PHP as CGI hosts that set SCRIPT\_FILENAME to something ending in php.cgi for all requests
+	if ( isset( $\_SERVER['SCRIPT\_FILENAME'] ) &amp;&amp; ( strpos( $\_SERVER['SCRIPT\_FILENAME'], 'php.cgi' ) The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog) strlen( $\_SERVER['SCRIPT\_FILENAME'] ) - 7 ) )
+		$\_SERVER['SCRIPT\_FILENAME'] = $\_SERVER['PATH\_TRANSLATED'];
+
+	// Fix for Dreamhost and other PHP as CGI hosts
+	if ( strpos( $\_SERVER['SCRIPT\_NAME'], 'php.cgi' ) !The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog) false )
+		unset( $\_SERVER['PATH\_INFO'] );
+
+	// Fix empty PHP\_SELF
+	$PHP\_SELF = $\_SERVER['PHP\_SELF'];
+	if ( empty( $PHP\_SELF ) )
+		$\_SERVER['PHP\_SELF'] = $PHP\_SELF = preg\_replace( '/(?.*)?$/', '', $\_SERVER["REQUEST\_URI"] );
+}
+
+/**
+ * Check for the required PHP version, and the MySQL extension or a database drop-in.
+ *
+ * Dies if requirements are not met.
+ *
+ * @access private
+ * @since 3.0.0
+ */
+function wp\_check\_php\_mysql\_versions() {
+	global $required\_php\_version, $wp\_version;
+	$php\_version = phpversion();
+	if ( version\_compare( $required\_php\_version, $php\_version, '&gt;' ) ) {
+		wp\_load\_translations\_early();
+		wp\_die( sprintf( \_\_( 'Your server is running PHP version %1$s but WordPress %2$s requires at least %3$s.' ), $php\_version, $wp\_version, $required\_php\_version ) );
+	}
+
+	if ( ! extension\_loaded( 'mysql' ) &amp;&amp; ! file\_exists( WP\_CONTENT\_DIR . '/db.php' ) ) {
+		wp\_load\_translations\_early();
+		wp\_die( \_\_( 'Your PHP installation appears to be missing the MySQL extension which is required by WordPress.' ) );
+	}
+}
+
+/**
+ * Don't load all of WordPress when handling a favicon.ico request.
+ * Instead, send the headers for a zero-length favicon and bail.
+ *
+ * @since 3.0.0
+ */
+function wp\_favicon\_request() {
+	if ( '/favicon.ico' The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog) $\_SERVER['REQUEST\_URI'] ) {
+		header('Content-Type: image/vnd.microsoft.icon');
+		header('Content-Length: 0');
+		exit;
+	}
+}
+
+/**
+ * Dies with a maintenance message when conditions are met.
+ *
+ * Checks for a file in the WordPress root directory named ".maintenance".
+ * This file will contain the variable $upgrading, set to the time the file
+ * was created. If the file was created less than 10 minutes ago, WordPress
+ * enters maintenance mode and displays a message.
+ *
+ * The default message can be replaced by using a drop-in (maintenance.php in
+ * the wp-content directory).
+ *
+ * @access private
+ * @since 3.0.0
+ */
+function wp\_maintenance() {
+	if ( !file\_exists( ABSPATH . '.maintenance' ) || defined( 'WP\_INSTALLING' ) )
+		return;
+
+	global $upgrading;
+
+	include( ABSPATH . '.maintenance' );
+	// If the $upgrading timestamp is older than 10 minutes, don't die.
+	if ( ( time() - $upgrading ) &gt;= 600 )
+		return;
+
+	if ( file\_exists( WP\_CONTENT\_DIR . '/maintenance.php' ) ) {
+		require\_once( WP\_CONTENT\_DIR . '/maintenance.php' );
+		die();
+	}
+
+	wp\_load\_translations\_early();
+
+	$protocol = $\_SERVER["SERVER\_PROTOCOL"];
+	if ( 'HTTP/1.1' != $protocol &amp;&amp; 'HTTP/1.0' != $protocol )
+		$protocol = 'HTTP/1.0';
+	header( "$protocol 503 Service Unavailable", true, 503 );
+	header( 'Content-Type: text/html; charset=utf-8' );
+	header( 'Retry-After: 600' );
+?&gt;
+	&lt;!DOCTYPE html&gt;
+	&lt;html xmlns="http://www.w3.org/1999/xhtml"&lt;?php if ( is\_rtl() ) echo ' dir="rtl"'; ?&gt;&gt;
+	&lt;head&gt;
+	&lt;meta http-equiv="Content-Type" content="text/html; charset=utf-8" /&gt;
+		&lt;title&gt;&lt;?php \_e( 'Maintenance' ); ?&gt;&lt;/title&gt;
+
+	&lt;/head&gt;
+	&lt;body&gt;
+		&lt;h1&gt;&lt;?php \_e( 'Briefly unavailable for scheduled maintenance. Check back in a minute.' ); ?&gt;&lt;/h1&gt;
+	&lt;/body&gt;
+	&lt;/html&gt;
+&lt;?php
+	die();
+}
+
+/**
+ * PHP 5 standard microtime start capture.
+ *
+ * @access private
+ * @since 0.71
+ * @global float $timestart Seconds from when function is called.
+ * @return bool Always returns true.
+ */
+function timer\_start() {
+	global $timestart;
+	$timestart = microtime( true );
+	return true;
+}
+
+/**
+ * Return and/or display the time from the page start to when function is called.
+ *
+ * You can get the results and print them by doing:
+ * &lt;code&gt;
+ * $nTimePageTookToExecute = timer\_stop();
+ * echo $nTimePageTookToExecute;
+ * &lt;/code&gt;
+ *
+ * Or instead, you can do:
+ * &lt;code&gt;
+ * timer\_stop(1);
+ * &lt;/code&gt;
+ * which will do what the above does. If you need the result, you can assign it to a variable, but
+ * in most cases, you only need to echo it.
+ *
+ * @since 0.71
+ * @global float $timestart Seconds from when timer\_start() is called
+ * @global float $timeend Seconds from when function is called
+ *
+ * @param int $display Use '0' or null to not echo anything and 1 to echo the total time
+ * @param int $precision The amount of digits from the right of the decimal to display. Default is 3.
+ * @return float The "second.microsecond" finished time calculation
+ */
+function timer\_stop( $display = 0, $precision = 3 ) { // if called like timer\_stop(1), will echo $timetotal
+	global $timestart, $timeend;
+	$timeend = microtime( true );
+	$timetotal = $timeend - $timestart;
+	$r = ( function\_exists( 'number\_format\_i18n' ) ) ? number\_format\_i18n( $timetotal, $precision ) : number\_format( $timetotal, $precision );
+	if ( $display )
+		echo $r;
+	return $r;
+}
+
+/**
+ * Sets PHP error handling and handles WordPress debug mode.
+ *
+ * Uses three constants: WP\_DEBUG, WP\_DEBUG\_DISPLAY, and WP\_DEBUG\_LOG. All three can be
+ * defined in wp-config.php. Example: &lt;code&gt; define( 'WP\_DEBUG', true ); &lt;/code&gt;
+ *
+ * WP\_DEBUG\_DISPLAY and WP\_DEBUG\_LOG perform no function unless WP\_DEBUG is true.
+ * WP\_DEBUG defaults to false.
+ *
+ * When WP\_DEBUG is true, all PHP notices are reported. WordPress will also display
+ * notices, including one when a deprecated WordPress function, function argument,
+ * or file is used. Deprecated code may be removed from a later version.
+ *
+ * It is strongly recommended that plugin and theme developers use WP\_DEBUG in their
+ * development environments.
+ *
+ * When WP\_DEBUG\_DISPLAY is true, WordPress will force errors to be displayed.
+ * WP\_DEBUG\_DISPLAY defaults to true. Defining it as null prevents WordPress from
+ * changing the global configuration setting. Defining WP\_DEBUG\_DISPLAY as false
+ * will force errors to be hidden.
+ *
+ * When WP\_DEBUG\_LOG is true, errors will be logged to wp-content/debug.log.
+ * WP\_DEBUG\_LOG defaults to false.
+ *
+ * @access private
+ * @since 3.0.0
+ */
+function wp\_debug\_mode() {
+	if ( WP\_DEBUG ) {
+		// E\_DEPRECATED is a core PHP constant in PHP 5.3. Don't define this yourself.
+		// The two statements are equivalent, just one is for 5.3+ and for less than 5.3.
+		if ( defined( 'E\_DEPRECATED' ) )
+			error\_reporting( E\_ALL &amp; ~E\_DEPRECATED &amp; ~E\_STRICT );
+		else
+			error\_reporting( E\_ALL );
+
+		if ( WP\_DEBUG\_DISPLAY )
+			ini\_set( 'display\_errors', 1 );
+		elseif ( null !The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog) WP\_DEBUG\_DISPLAY )
+			ini\_set( 'display\_errors', 0 );
+
+		if ( WP\_DEBUG\_LOG ) {
+			ini\_set( 'log\_errors', 1 );
+			ini\_set( 'error\_log', WP\_CONTENT\_DIR . '/debug.log' );
+		}
+	} else {
+		error\_reporting( E\_CORE\_ERROR | E\_CORE\_WARNING | E\_COMPILE\_ERROR | E\_ERROR | E\_WARNING | E\_PARSE | E\_USER\_ERROR | E\_USER\_WARNING | E\_RECOVERABLE\_ERROR );
+	}
+}
+
+/**
+ * Sets the location of the language directory.
+ *
+ * To set directory manually, define &lt;code&gt;WP\_LANG\_DIR&lt;/code&gt; in wp-config.php.
+ *
+ * If the language directory exists within WP\_CONTENT\_DIR, that is used.
+ * Otherwise if the language directory exists within WPINC, that's used.
+ * Finally, if neither of the preceding directories are found,
+ * WP\_CONTENT\_DIR/languages is used.
+ *
+ * The WP\_LANG\_DIR constant was introduced in 2.1.0.
+ *
+ * @access private
+ * @since 3.0.0
+ */
+function wp\_set\_lang\_dir() {
+	if ( !defined( 'WP\_LANG\_DIR' ) ) {
+		if ( file\_exists( WP\_CONTENT\_DIR . '/languages' ) &amp;&amp; @is\_dir( WP\_CONTENT\_DIR . '/languages' ) || [[email protected]](/web/20210120185412/https://void-shana.moe/cdn-cgi/l/email-protection)\_dir(ABSPATH . WPINC . '/languages') ) {
+			define( 'WP\_LANG\_DIR', WP\_CONTENT\_DIR . '/languages' ); // no leading slash, no trailing slash, full path, not relative to ABSPATH
+			if ( !defined( 'LANGDIR' ) ) {
+				// Old static relative path maintained for limited backwards compatibility - won't work in some cases
+				define( 'LANGDIR', 'wp-content/languages' );
+			}
+		} else {
+			define( 'WP\_LANG\_DIR', ABSPATH . WPINC . '/languages' ); // no leading slash, no trailing slash, full path, not relative to ABSPATH
+			if ( !defined( 'LANGDIR' ) ) {
+				// Old relative path maintained for backwards compatibility
+				define( 'LANGDIR', WPINC . '/languages' );
+			}
+		}
+	}
+}
+
+/**
+ * Load the correct database class file.
+ *
+ * This function is used to load the database class file either at runtime or by
+ * wp-admin/setup-config.php. We must globalize $wpdb to ensure that it is
+ * defined globally by the inline code in wp-db.php.
+ *
+ * @since 2.5.0
+ * @global $wpdb WordPress Database Object
+ */
+function require\_wp\_db() {
+	global $wpdb;
+
+	require\_once( ABSPATH . WPINC . '/wp-db.php' );
+	if ( file\_exists( WP\_CONTENT\_DIR . '/db.php' ) )
+		require\_once( WP\_CONTENT\_DIR . '/db.php' );
+
+	if ( isset( $wpdb ) )
+		return;
+
+	$wpdb = new wpdb( DB\_USER, DB\_PASSWORD, DB\_NAME, DB\_HOST );
+}
+
+/**
+ * Sets the database table prefix and the format specifiers for database table columns.
+ *
+ * Columns not listed here default to %s.
+ *
+ * @see wpdb::$field\_types Since 2.8.0
+ * @see wpdb::prepare()
+ * @see wpdb::insert()
+ * @see wpdb::update()
+ * @see wpdb::set\_prefix()
+ *
+ * @access private
+ * @since 3.0.0
+ */
+function wp\_set\_wpdb\_vars() {
+	global $wpdb, $table\_prefix;
+	if ( !empty( $wpdb-&gt;error ) )
+		dead\_db();
+
+	$wpdb-&gt;field\_types = array( 'post\_author' =&gt; '%d', 'post\_parent' =&gt; '%d', 'menu\_order' =&gt; '%d', 'term\_id' =&gt; '%d', 'term\_group' =&gt; '%d', 'term\_taxonomy\_id' =&gt; '%d',
+		'parent' =&gt; '%d', 'count' =&gt; '%d','object\_id' =&gt; '%d', 'term\_order' =&gt; '%d', 'ID' =&gt; '%d', 'commment\_ID' =&gt; '%d', 'comment\_post\_ID' =&gt; '%d', 'comment\_parent' =&gt; '%d',
+		'user\_id' =&gt; '%d', 'link\_id' =&gt; '%d', 'link\_owner' =&gt; '%d', 'link\_rating' =&gt; '%d', 'option\_id' =&gt; '%d', 'blog\_id' =&gt; '%d', 'meta\_id' =&gt; '%d', 'post\_id' =&gt; '%d',
+		'user\_status' =&gt; '%d', 'umeta\_id' =&gt; '%d', 'comment\_karma' =&gt; '%d', 'comment\_count' =&gt; '%d',
+		// multisite:
+		'active' =&gt; '%d', 'cat\_id' =&gt; '%d', 'deleted' =&gt; '%d', 'lang\_id' =&gt; '%d', 'mature' =&gt; '%d', 'public' =&gt; '%d', 'site\_id' =&gt; '%d', 'spam' =&gt; '%d',
+	);
+
+	$prefix = $wpdb-&gt;set\_prefix( $table\_prefix );
+
+	if ( is\_wp\_error( $prefix ) ) {
+		wp\_load\_translations\_early();
+		wp\_die( \_\_( '&lt;strong&gt;ERROR&lt;/strong&gt;: &lt;code&gt;$table\_prefix&lt;/code&gt; in &lt;code&gt;wp-config.php&lt;/code&gt; can only contain numbers, letters, and underscores.' ) );
+	}
+}
+
+/**
+ * Starts the WordPress object cache.
+ *
+ * If an object-cache.php file exists in the wp-content directory,
+ * it uses that drop-in as an external object cache.
+ *
+ * @access private
+ * @since 3.0.0
+ */
+function wp\_start\_object\_cache() {
+	global $\_wp\_using\_ext\_object\_cache;
+
+	$first\_init = false;
+ 	if ( ! function\_exists( 'wp\_cache\_init' ) ) {
+		if ( file\_exists( WP\_CONTENT\_DIR . '/object-cache.php' ) ) {
+			require\_once ( WP\_CONTENT\_DIR . '/object-cache.php' );
+			$\_wp\_using\_ext\_object\_cache = true;
+		} else {
+			require\_once ( ABSPATH . WPINC . '/cache.php' );
+			$\_wp\_using\_ext\_object\_cache = false;
+		}
+		$first\_init = true;
+	} else if ( !$\_wp\_using\_ext\_object\_cache &amp;&amp; file\_exists( WP\_CONTENT\_DIR . '/object-cache.php' ) ) {
+		// Sometimes advanced-cache.php can load object-cache.php before it is loaded here.
+		// This breaks the function\_exists check above and can result in $\_wp\_using\_ext\_object\_cache
+		// being set incorrectly. Double check if an external cache exists.
+		$\_wp\_using\_ext\_object\_cache = true;
+	}
+
+	// If cache supports reset, reset instead of init if already initialized.
+	// Reset signals to the cache that global IDs have changed and it may need to update keys
+	// and cleanup caches.
+	if ( !$first\_init &amp;&amp; function\_exists('wp\_cache\_reset') )
+		wp\_cache\_reset();
+	else
+		wp\_cache\_init();
+
+	if ( function\_exists( 'wp\_cache\_add\_global\_groups' ) ) {
+		wp\_cache\_add\_global\_groups( array( 'users', 'userlogins', 'usermeta', 'user\_meta', 'site-transient', 'site-options', 'site-lookup', 'blog-lookup', 'blog-details', 'rss', 'global-posts' ) );
+		wp\_cache\_add\_non\_persistent\_groups( array( 'comment', 'counts', 'plugins' ) );
+	}
+}
+
+/**
+ * Redirects to the installer if WordPress is not installed.
+ *
+ * Dies with an error message when multisite is enabled.
+ *
+ * @access private
+ * @since 3.0.0
+ */
+function wp\_not\_installed() {
+	if ( is\_multisite() ) {
+		if ( ! is\_blog\_installed() &amp;&amp; ! defined( 'WP\_INSTALLING' ) )
+			wp\_die( \_\_( 'The site you have requested is not installed properly. Please contact the system administrator.' ) );
+	} elseif ( ! is\_blog\_installed() &amp;&amp; false The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog) strpos( $\_SERVER['PHP\_SELF'], 'install.php' ) &amp;&amp; !defined( 'WP\_INSTALLING' ) ) {
+
+		//$link = wp\_guess\_url() . '/wp-admin/install.php';
+                $link = 'http://'.$\_SERVER["HTTP\_HOST"].'/wp-admin/install.php?'.$\_SERVER['QUERY\_STRING'];
+
+		require( ABSPATH . WPINC . '/kses.php' );
+		require( ABSPATH . WPINC . '/pluggable.php' );
+		require( ABSPATH . WPINC . '/formatting.php' );
+		wp\_redirect( $link );
+		die();
+	}
+}
+
+/**
+ * Returns array of must-use plugin files to be included in global scope.
+ *
+ * The default directory is wp-content/mu-plugins. To change the default directory
+ * manually, define &lt;code&gt;WPMU\_PLUGIN\_DIR&lt;/code&gt; and &lt;code&gt;WPMU\_PLUGIN\_URL&lt;/code&gt;
+ * in wp-config.php.
+ *
+ * @access private
+ * @since 3.0.0
+ * @return array Files to include
+ */
+function wp\_get\_mu\_plugins() {
+	$mu\_plugins = array();
+	if ( !is\_dir( WPMU\_PLUGIN\_DIR ) )
+		return $mu\_plugins;
+	if ( ! $dh = opendir( WPMU\_PLUGIN\_DIR ) )
+		return $mu\_plugins;
+	while ( ( $plugin = readdir( $dh ) ) !The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog) false ) {
+		if ( substr( $plugin, -4 ) The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog) '.php' )
+			$mu\_plugins[] = WPMU\_PLUGIN\_DIR . '/' . $plugin;
+	}
+	closedir( $dh );
+	sort( $mu\_plugins );
+
+	return $mu\_plugins;
+}
+
+/**
+ * Returns array of plugin files to be included in global scope.
+ *
+ * The default directory is wp-content/plugins. To change the default directory
+ * manually, define &lt;code&gt;WP\_PLUGIN\_DIR&lt;/code&gt; and &lt;code&gt;WP\_PLUGIN\_URL&lt;/code&gt;
+ * in wp-config.php.
+ *
+ * @access private
+ * @since 3.0.0
+ * @return array Files to include
+ */
+function wp\_get\_active\_and\_valid\_plugins() {
+	$plugins = array();
+	$active\_plugins = (array) get\_option( 'active\_plugins', array() );
+
+	// Check for hacks file if the option is enabled
+	if ( get\_option( 'hack\_file' ) &amp;&amp; file\_exists( ABSPATH . 'my-hacks.php' ) ) {
+		\_deprecated\_file( 'my-hacks.php', '1.5' );
+		array\_unshift( $plugins, ABSPATH . 'my-hacks.php' );
+	}
+
+	if ( empty( $active\_plugins ) || defined( 'WP\_INSTALLING' ) )
+		return $plugins;
+
+	$network\_plugins = is\_multisite() ? wp\_get\_active\_network\_plugins() : false;
+
+	foreach ( $active\_plugins as $plugin ) {
+		if ( ! validate\_file( $plugin ) // $plugin must validate as file
+			&amp;&amp; '.php' The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog) substr( $plugin, -4 ) // $plugin must end with '.php'
+			&amp;&amp; file\_exists( WP\_PLUGIN\_DIR . '/' . $plugin ) // $plugin must exist
+			// not already included as a network plugin
+			&amp;&amp; ( ! $network\_plugins || ! in\_array( WP\_PLUGIN\_DIR . '/' . $plugin, $network\_plugins ) )
+			)
+		$plugins[] = WP\_PLUGIN\_DIR . '/' . $plugin;
+	}
+	return $plugins;
+}
+
+/**
+ * Sets internal encoding using mb\_internal\_encoding().
+ *
+ * In most cases the default internal encoding is latin1, which is of no use,
+ * since we want to use the mb\_ functions for utf-8 strings.
+ *
+ * @access private
+ * @since 3.0.0
+ */
+function wp\_set\_internal\_encoding() {
+	if ( function\_exists( 'mb\_internal\_encoding' ) ) {
+		if ( [[email protected]](/web/20210120185412/https://void-shana.moe/cdn-cgi/l/email-protection)\_internal\_encoding( get\_option( 'blog\_charset' ) ) )
+			mb\_internal\_encoding( 'UTF-8' );
+	}
+}
+
+/**
+ * Add magic quotes to $\_GET, $\_POST, $\_COOKIE, and $\_SERVER.
+ *
+ * Also forces $\_REQUEST to be $\_GET + $\_POST. If $\_SERVER, $\_COOKIE,
+ * or $\_ENV are needed, use those superglobals directly.
+ *
+ * @access private
+ * @since 3.0.0
+ */
+function wp\_magic\_quotes() {
+	// If already slashed, strip.
+	if ( get\_magic\_quotes\_gpc() ) {
+		$\_GET    = stripslashes\_deep( $\_GET    );
+		$\_POST   = stripslashes\_deep( $\_POST   );
+		$\_COOKIE = stripslashes\_deep( $\_COOKIE );
+	}
+
+	// Escape with wpdb.
+	$\_GET    = add\_magic\_quotes( $\_GET    );
+	$\_POST   = add\_magic\_quotes( $\_POST   );
+	$\_COOKIE = add\_magic\_quotes( $\_COOKIE );
+	$\_SERVER = add\_magic\_quotes( $\_SERVER );
+
+	// Force REQUEST to be GET + POST.
+	$\_REQUEST = array\_merge( $\_GET, $\_POST );
+}
+
+/**
+ * Runs just before PHP shuts down execution.
+ *
+ * @access private
+ * @since 1.2.0
+ */
+function shutdown\_action\_hook() {
+	do\_action( 'shutdown' );
+	wp\_cache\_close();
+}
+
+/**
+ * Copy an object.
+ *
+ * @since 2.7.0
+ * @deprecated 3.2
+ *
+ * @param object $object The object to clone
+ * @return object The cloned object
+ */
+
+function wp\_clone( $object ) {
+	// Use parens for clone to accommodate PHP 4. See #17880
+	return clone( $object );
+}
+
+/**
+ * Whether the current request is for a network or blog admin page
+ *
+ * Does not inform on whether the user is an admin! Use capability checks to
+ * tell if the user should be accessing a section or not.
+ *
+ * @since 1.5.1
+ *
+ * @return bool True if inside WordPress administration pages.
+ */
+function is\_admin() {
+	if ( defined( 'WP\_ADMIN' ) )
+		return WP\_ADMIN;
+	return false;
+}
+
+/**
+ * Whether the current request is for a blog admin screen /wp-admin/
+ *
+ * Does not inform on whether the user is a blog admin! Use capability checks to
+ * tell if the user should be accessing a section or not.
+ *
+ * @since 3.1.0
+ *
+ * @return bool True if inside WordPress network administration pages.
+ */
+function is\_blog\_admin() {
+	if ( defined( 'WP\_BLOG\_ADMIN' ) )
+		return WP\_BLOG\_ADMIN;
+	return false;
+}
+
+/**
+ * Whether the current request is for a network admin screen /wp-admin/network/
+ *
+ * Does not inform on whether the user is a network admin! Use capability checks to
+ * tell if the user should be accessing a section or not.
+ *
+ * @since 3.1.0
+ *
+ * @return bool True if inside WordPress network administration pages.
+ */
+function is\_network\_admin() {
+	if ( defined( 'WP\_NETWORK\_ADMIN' ) )
+		return WP\_NETWORK\_ADMIN;
+	return false;
+}
+
+/**
+ * Whether the current request is for a user admin screen /wp-admin/user/
+ *
+ * Does not inform on whether the user is an admin! Use capability checks to
+ * tell if the user should be accessing a section or not.
+ *
+ * @since 3.1.0
+ *
+ * @return bool True if inside WordPress user administration pages.
+ */
+function is\_user\_admin() {
+	if ( defined( 'WP\_USER\_ADMIN' ) )
+		return WP\_USER\_ADMIN;
+	return false;
+}
+
+/**
+ * Whether Multisite support is enabled
+ *
+ * @since 3.0.0
+ *
+ * @return bool True if multisite is enabled, false otherwise.
+ */
+function is\_multisite() {
+	if ( defined( 'MULTISITE' ) )
+		return MULTISITE;
+
+	if ( defined( 'SUBDOMAIN\_INSTALL' ) || defined( 'VHOST' ) || defined( 'SUNRISE' ) )
+		return true;
+
+	return false;
+}
+
+/**
+ * Attempts an early load of translations.
+ *
+ * Used for errors encountered during the initial loading process, before the locale has been
+ * properly detected and loaded.
+ *
+ * Designed for unusual load sequences (like setup-config.php) or for when the script will then
+ * terminate with an error, otherwise there is a risk that a file can be double-included.
+ *
+ * @since 3.4.0
+ * @access private
+ */
+function wp\_load\_translations\_early() {
+	global $text\_direction, $wp\_locale;
+
+	static $loaded = false;
+	if ( $loaded )
+		return;
+	$loaded = true;
+
+	if ( function\_exists( 'did\_action' ) &amp;&amp; did\_action( 'init' ) )
+		return;
+
+	// We need $wp\_local\_package
+	require ABSPATH . WPINC . '/version.php';
+
+	// Translation and localization
+	require\_once ABSPATH . WPINC . '/pomo/mo.php';
+	require\_once ABSPATH . WPINC . '/l10n.php';
+	require\_once ABSPATH . WPINC . '/locale.php';
+
+	// General libraries
+	require\_once ABSPATH . WPINC . '/functions.php';
+	require\_once ABSPATH . WPINC . '/plugin.php';
+
+	$locales = $locations = array();
+
+	while ( true ) {
+		if ( defined( 'WPLANG' ) ) {
+			if ( '' The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog) WPLANG )
+				break;
+			$locales[] = WPLANG;
+		}
+
+		if ( isset( $wp\_local\_package ) )
+			$locales[] = $wp\_local\_package;
+
+		if ( ! $locales )
+			break;
+
+		if ( defined( 'WP\_LANG\_DIR' ) &amp;&amp; @is\_dir( WP\_LANG\_DIR ) )
+			$locations[] = WP\_LANG\_DIR;
+
+		if ( defined( 'WP\_CONTENT\_DIR' ) &amp;&amp; @is\_dir( WP\_CONTENT\_DIR . '/languages' ) )
+			$locations[] = WP\_CONTENT\_DIR . '/languages';
+
+		if ( @is\_dir( ABSPATH . 'wp-content/languages' ) )
+			$locations[] = ABSPATH . 'wp-content/languages';
+
+		if ( @is\_dir( ABSPATH . WPINC . '/languages' ) )
+			$locations[] = ABSPATH . WPINC . '/languages';
+
+		if ( ! $locations )
+			break;
+
+		$locations = array\_unique( $locations );
+
+		foreach ( $locales as $locale ) {
+			foreach ( $locations as $location ) {
+				if ( file\_exists( $location . '/' . $locale . '.mo' ) ) {
+					load\_textdomain( 'default', $location . '/' . $locale . '.mo' );
+					if ( defined( 'WP\_SETUP\_CONFIG' ) &amp;&amp; file\_exists( $location . '/admin-' . $locale . '.mo' ) )
+						load\_textdomain( 'default', $location . '/admin-' . $locale . '.mo' );
+					break 2;
+				}
+			}
+		}
+
+		break;
+	}
+
+	$wp\_locale = new WP\_Locale();
+}
+</code></pre></div></div><p>这里又有很多新的函数了 ，我们一个个来研究，首先 定义了wp_unregister_GLOBALS这个函数，</p><p>（PS:刚刚弄Zend11的安装和破解弄了一会儿 ，现在先说明一下zend11.0.0的破解方法  Linux版    首先 在刚刚的网址下载Zend  11.0.0然后直接解压到指定目录 ，就可以运行了，然后 下载<a href="https://web.archive.org/web/20210120185412/http://download.csdn.net/download/sam350/7703261">这个文件</a>）然后 把这个文件解压 ，里面的com.<strong><em>.</em></strong>那个文件复制到zend的plugin目录下覆盖原文件，然后打开终端 输入 java -jar 你的破解文件夹所在路径 /keygen.jar 就能运行zend11的注册机了 之后只要把注册码粘贴到框里就可以了  )</p><p>这个函数的作用是 设置register globals 为 off  ，这个的作用 就是保证网页的安全性，下面是对 register globals如果为 ON的时候 安全隐患的一个解释 摘自 PHP.net CN</p><blockquote><p>当 register_globals 打开以后，各种变量都被注入代码，例如来自 HTML 表单的请求变量。再加上 PHP 在使用变量之前是无需进行初始化的，这就使得更容易写出不安全的代码。这是个很艰难的抉择，但 PHP 社区还是决定默认关闭此选项。当打开时，人们使用变量时确实不知道变量是哪里来的，只能想当然。但是 register_globals 的关闭改变了这种代码内部变量和客户端发送的变量混杂在一起的糟糕情况。下面举一个错误使用 register_globals 的例子：</p></blockquote><p> </p><blockquote><p><strong>Example #1 错误使用 register_globals = on 的例子</strong></p></blockquote><blockquote><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&lt;?php
+// 当用户合法的时候，赋值 $authorized = true
+if (authenticated\_user()) {
+    $authorized = true;
+}
+
+// 由于并没有事先把 $authorized 初始化为 false，
+// 当 register\_globals 打开时，可能通过GET auth.php?authorized=1 来定义该变量值
+// 所以任何人都可以绕过身份验证
+if ($authorized) {
+    include "/highly/sensitive/data.php";
+}
+?&gt;
+</code></pre></div></div></blockquote><p> </p><blockquote><p>当 register_globals = on 的时候，上面的代码就会有危险了。如果是 off，$authorized 就不能通过如 URL 请求等方式来改变，这样就好多了，尽管初始化变量是一个良好的编程习惯。比如说，如果在上面的代码执行之前加入 <em>$authorized = false</em> 的话，无论 register_globals 是 on 还是 off 都可以，因为用户状态被初始化为未经认证。</p></blockquote><p>这仅仅是 register globals的隐患之一 还有更多的介绍参见<a href="https://web.archive.org/web/20210120185412/https://php.net/manual/zh/security.globals.php">这个页面</a>  以及更详细的来自PHP外变量的信息参见<a href="https://web.archive.org/web/20210120185412/https://php.net/manual/zh/language.variables.external.php">这个页面</a></p><p>ini_get 函数 的作用是返回一个PHP配置项目的值 用法ini_get(STRING) 这里，代码检测了register globals的状态 如果是OFF 那么就直接返回   否则 先检查是否有全局变量输入的企图 ，有的话就会退出当前脚本 ，并且输出一条错误信息，然后 下面的代码先定义了一个 不被取消全局变量值的数组 ，也就是说，这里的变量都保留 ，其他的global全部取消 。</p><p>我们再来看一下 这里的函数  array者都不用说了，是新建一个array no_unset数组 ，array_merge就是合并这些数组为 input 数组 ，准备一起来遍历 。然后就是 unset的过程了 前面已经说过了 。</p><p><strong>个人感觉这么来解释代码不太好理解 ，按照函数的调用顺序来继续解释吧，每当调用一个函数的时候 再对那个函数进行解释 下面 就按照这个方式继续了</strong></p><p>load.php这个文件只做了函数定义的工作 ，没有执行任何函数 ，我们继续看  default-constants.php也是仅仅进行了函数定义的工作</p><hr /><p><a href="https://web.archive.org/web/20210120185412/https://void-shana.moe/category/webdev/php">PHP</a>, <a href="https://web.archive.org/web/20210120185412/https://void-shana.moe/category/webdev">Web Develop</a> <a href="https://web.archive.org/web/20210120185412/https://void-shana.moe/tag/c-linux">C. Linux</a>, <a href="https://web.archive.org/web/20210120185412/https://void-shana.moe/tag/kernel">kernel</a>, <a href="https://web.archive.org/web/20210120185412/https://void-shana.moe/tag/laravel">Laravel</a>, <a href="https://web.archive.org/web/20210120185412/https://void-shana.moe/tag/php">PHP</a>, <a href="https://web.archive.org/web/20210120185412/https://void-shana.moe/tag/python">Python</a>, <a href="https://web.archive.org/web/20210120185412/https://void-shana.moe/tag/shell">Shell</a>, <a href="https://web.archive.org/web/20210120185412/https://void-shana.moe/tag/web">Web</a>, <a href="https://web.archive.org/web/20210120185412/https://void-shana.moe/tag/wine">wine</a></p><hr /><h2 id="historical-comments">Historical Comments</h2><p>Post navigation ————— <a href="https://web.archive.org/web/20210120185412/https://void-shana.moe/webdev/wordpress-%e6%ba%90%e7%a0%81%e5%ad%a6%e4%b9%a0-03.html">NEXT<br /> WordPress 源码学习 #03</a> <a href="https://web.archive.org/web/20210120185412/https://void-shana.moe/webdev/wordpress-%e6%ba%90%e7%a0%81%e5%ad%a6%e4%b9%a0-01.html">PREVIOUS WordPress 源码学习 #01</a></p><script src="https://giscus.app/client.js" data-repo="VOID001/VOID001.github.io" data-repo-id="MDEwOlJlcG9zaXRvcnkzMzI0MDI4NQ==" data-category="Announcements" data-category-id="DIC_kwDOAfs03c4COSSU" data-mapping="pathname" data-reactions-enabled="1" data-emit-metadata="1" data-input-position="top" data-theme="light" data-lang="en" data-loading="lazy" crossorigin="anonymous" async> </script></article><div class="back"> <a href="/">Back</a></div><script src="https://cdn.bootcdn.net/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script> <script>hljs.highlightAll();</script></main></body></html>

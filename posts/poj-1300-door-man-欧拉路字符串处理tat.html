@@ -1,0 +1,203 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1" /><title>POJ 1300 Door Man 欧拉路&字符串处理TAT</title><meta name="twitter:card" content="summary" /><meta name="twitter:site" content="@" /><meta name="twitter:title" content="POJ 1300 Door Man 欧拉路&字符串处理TAT" /><meta name="twitter:description" content="The content is recoverd from Wordpress Blog, for more details please check HERE"><meta name="description" content="The content is recoverd from Wordpress Blog, for more details please check HERE"><meta name="google-site-verification" content="epFgX0s_0RM3CdjwFcsewfXzPov2g8s9ZBOLyaIUH-o"><link rel="icon" href="/assets/favicon.png"><link rel="apple-touch-icon" href="/assets/touch-icon.png"><link rel="stylesheet" href="//code.cdn.mozilla.net/fonts/fira.css"><link rel="stylesheet" href="/assets/core.css"><link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.1.1/css/all.min.css" rel="stylesheet"><link href="https://cdn.bootcdn.net/ajax/libs/highlight.js/11.5.0/styles/github.min.css" rel="stylesheet"><link rel="canonical" href="/posts/poj-1300-door-man-%E6%AC%A7%E6%8B%89%E8%B7%AF%E5%AD%97%E7%AC%A6%E4%B8%B2%E5%A4%84%E7%90%86tat"><link rel="alternate" type="application/atom+xml" title="VOID001's WOWO" href="/feed.xml" /> <script> (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){ (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o), m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m) })(window,document,'script','//www.google-analytics.com/analytics.js','ga'); ga( 'create', 'UA-73703130-2', 'auto' ); ga( 'send', 'pageview' ); </script></head><body><aside class="logo"> <a href="/"> <img src="/assets/avatar.jpeg" class="gravatar"> </a> <span class="logo-prompt">Back to Home</span></aside><div class="footer-flex" style="margin-bottom: 4px"> Thinking, Coding, Improving</div><div class="footer-flex" style="color: #333333"> <a href="http://github.com/VOID001"><i class="fa-brands fa-lg fa-github"></i></a> <span style="margin: 4px"></span> <a href="https://t.me/s/void001_fav"><i class="fa-brands fa-lg fa-telegram"></i></a> <span style="margin: 4px"></span> <a href="/feed"><i class="fa-solid fa-lg fa-rss"></i></a> <span style="margin: 4px"></span> <a href="/friends"><i class="fa-solid fa-lg fa-ship"></i></a></div><script src="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.1.1/js/fontawesome.min.js"></script><main> <noscript><style> article .footnotes { display: block; }</style></noscript><article><div class="center"><h1>POJ 1300 Door Man 欧拉路&字符串处理TAT</h1><time>October 26, 2014</time> <span>[ ]</span></div><div class="divider"></div><p>The content is recoverd from Wordpress Blog, for more details please check <a href="recover-my-blog">HERE</a></p><h5 id="october-26-2014"><a href="https://web.archive.org/web/20210418234931/https://void-shana.moe/acmalgo/poj-1300-door-man-%e6%ac%a7%e6%8b%89%e8%b7%af%e5%ad%97%e7%ac%a6%e4%b8%b2%e5%a4%84%e7%90%86tat.html" title="3:01 am">October 26, 2014</a></h5><p><a href="https://web.archive.org/web/20210418234931/https://void-shana.moe/author/void001" title="View all posts by VOID001">VOID001</a> Comments <a href="https://web.archive.org/web/20210418234931/https://void-shana.moe/acmalgo/poj-1300-door-man-%e6%ac%a7%e6%8b%89%e8%b7%af%e5%ad%97%e7%ac%a6%e4%b8%b2%e5%a4%84%e7%90%86tat.html#respond">0 Comment</a></p><p>Door Man</p><table><tbody><tr><td><strong>Time Limit:</strong> 1000MS</td><td> </td><td><strong>Memory Limit:</strong> 10000K</td></tr><tr><td><strong>Total Submissions:</strong> 2140</td><td> </td><td><strong>Accepted:</strong> 859</td></tr></tbody></table><p>Description</p><p>You are a butler in a large mansion. This mansion has so many rooms that they are merely referred to by number (room 0, 1, 2, 3, etc…). Your master is a particularly absent-minded lout and continually leaves doors open throughout a particular floor of the house. Over the years, you have mastered the art of traveling in a single path through the sloppy rooms and closing the doors behind you. Your biggest problem is determining whether it is possible to find a path through the sloppy rooms where you:</p><ol><li>Always shut open doors behind you immediately after passing through</li><li>Never open a closed door</li><li>End up in your chambers (room 0) with all doors closed</li></ol><p>In this problem, you are given a list of rooms and open doors between them (along with a starting room). It is not needed to determine a route, only if one is possible.</p><p>Input</p><p>Input to this problem will consist of a (non-empty) series of up to 100 data sets. Each data set will be formatted according to the following description, and there will be no blank lines separating data sets.</p><p>A single data set has 3 components: </p><ol><li>Start line – A single line, “START M N”, where M indicates the butler’s starting room, and N indicates the number of rooms in the house (1 &lt;= N &lt;= 20).</li><li>Room list – A series of N lines. Each line lists, for a single room, every open door that leads to a room of higher number. For example, if room 3 had open doors to rooms 1, 5, and 7, the line for room 3 would read “5 7”. The first line in the list represents room 0. The second line represents room 1, and so on until the last line, which represents room (N – 1). It is possible for lines to be empty (in particular, the last line will always be empty since it is the highest numbered room). On each line, the adjacent rooms are always listed in ascending order. It is possible for rooms to be connected by multiple doors!</li><li>End line – A single line, “END”</li></ol><p>Following the final data set will be a single line, “ENDOFINPUT”.</p><p>Note that there will be no more than 100 doors in any single data set.</p><p>Output</p><p>For each data set, there will be exactly one line of output. If it is possible for the butler (by following the rules in the introduction) to walk into his chambers and close the final open door behind him, print a line “YES X”, where X is the number of doors he closed. Otherwise, print “NO”. Sample Input</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>START 1 2
+1
+
+END
+START 0 5
+1 2 2 3 3 4 4
+
+END
+START 0 10
+1 9
+2
+3
+4
+5
+6
+7
+8
+9
+
+END
+ENDOFINPUT
+</code></pre></div></div><p>Sample Output</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>YES 1
+NO
+YES 10
+</code></pre></div></div><p>首先，需要搞清楚如何处理输入  参考我的上一篇文章，可知道应该用什么函数进行输入和输出 。 先把输入处理的代码放上 ，下面代码可以把数据读入并且记录每一个节点的度数值</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/*************************************************************************
+    &gt; File Name: 1300.cpp
+    &gt; Author: VOID\_133
+    &gt; ################### 
+    &gt; Mail: ################### 
+    &gt; Created Time: 2014年10月25日 星期六 00时31分24秒
+ ************************************************************************/
+#include&lt;iostream&gt;
+#include&lt;algorithm&gt;
+#include&lt;cstdio&gt;
+#include&lt;vector&gt;
+#include&lt;cstring&gt;
+#include&lt;map&gt;
+#include&lt;queue&gt;
+#include&lt;stack&gt;
+#include&lt;string&gt;
+#include&lt;cstdlib&gt;
+#include&lt;ctime&gt;
+#include&lt;set&gt;
+using namespace std;
+
+const int maxn=25;
+int deg[maxn];
+
+int main(void)
+{
+	char s[50];
+	char inpstr[5000];
+	while(scanf("%s",s) &amp;&amp; strcmp(s,"ENDOFINPUT"))
+	{
+		if(!strcmp(s,"END")) continue;
+		memset(deg,0,sizeof(deg));
+		int sumdeg=0;
+		int n,m;				//m is the first room ,total has n rooms
+		scanf("%d%d",&amp;m,&amp;n);
+		//printf("START %d %dn",m,n);							//DBEUG
+		getchar();				//Clear the Enter
+		int nodenum=0;
+		while(nodenum&lt;n-1)
+		{
+			gets(inpstr);
+			int len=strlen(inpstr);
+			int inpnum=0;
+			bool flag;
+			//printf("%sn",s);
+			for(int i=0;i&lt;=len;i++)
+			{
+				//INPUT READIN
+				if(inpstr[i]The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog)' '|| inpstr[i]The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog)' ')
+				{
+					deg[nodenum]++;
+					deg[inpnum]++;
+					inpnum=0;
+				}
+				else
+				{
+					//printf("CHAR %c",inpstr[i]
+					inpnum=inpnum*10+inpstr[i]-'0';
+				}
+			}
+			nodenum++;
+		}
+		gets(s);
+		gets(s);
+		//Read in  END String
+		for(int i=0;i&lt;n;i++)
+		{
+			printf("Deg[%d]=%dn",i,deg[i]);
+		}
+	}
+	return 0;
+}
+</code></pre></div></div><p>实际上上面代码有问题 ，不过 在我写的时候还没有发现问题所在，下面先说这道题的思路，其实这个题很简单就是一个一笔画问题， 每一个房间代表一个节点，每一个开着的门代表一条节点之间的边，图为无向图，问是否存在从节点 m到 0 的一条路径，使得图中每一个边都被经过仅一次。</p><p>没有什么太多需要注意的，直接拿判断条件去判断就可以了，判断条件就是，当 m!=0时  即非Euler回路 ，这时要求 有两个奇节点 m 0 其它节点均为偶节点 当m=0时 要求所有节点均为偶节点 然后 根据边数=度数/2我们可以算出来有多少个门</p><p>因此我们只需要开个数组记录一下度数 就好了，</p><p>下面是AC代码 之前错了一次 是因为字符处理上出问题了，由于最初我gets读入空行的时候，会当作读入了一个数字 0 结果导致出问题 修改代码后就没有问题了 AC代码如下</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/*************************************************************************
+    &gt; File Name: 1300.cpp
+    &gt; Author: VOID\_133
+    &gt; ################### 
+    &gt; Mail: ################### 
+    &gt; Created Time: 2014年10月25日 星期六 00时31分24秒
+ ************************************************************************/
+#include&lt;iostream&gt;
+#include&lt;algorithm&gt;
+#include&lt;cstdio&gt;
+#include&lt;vector&gt;
+#include&lt;cstring&gt;
+#include&lt;map&gt;
+#include&lt;queue&gt;
+#include&lt;stack&gt;
+#include&lt;string&gt;
+#include&lt;cstdlib&gt;
+#include&lt;ctime&gt;
+#include&lt;set&gt;
+using namespace std;
+
+const int maxn=25;
+int deg[maxn];
+
+int main(void)
+{
+	char s[50];
+	char inpstr[5000];
+	while(scanf("%s",s) &amp;&amp; strcmp(s,"ENDOFINPUT"))
+	{
+		if(!strcmp(s,"END")) continue;
+		memset(deg,0,sizeof(deg));
+		int sumdeg=0;
+		int n,m;				//m is the first room ,total has n rooms
+		scanf("%d%d",&amp;m,&amp;n);
+		//printf("START %d %dn",m,n);							//DBEUG
+		getchar();				//Clear the Enter
+		int nodenum=0;
+		while(nodenum&lt;n-1)
+		{
+			gets(inpstr);
+			int len=strlen(inpstr);
+			int inpnum=0;
+			bool flag;
+			//printf("%sn",s);
+			for(int i=0;i&lt;=len;i++)
+			{
+				//INPUT READIN
+                                //if(inpstr[i]The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog)' '|| inpstr[i]The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog)' ' )  //WRONG CODE
+				if(inpstr[i]The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog)' '|| (inpstr[i]The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog)' ' &amp;&amp; len))   //CORRECTED
+				{
+					//printf("%d ",inpnum);
+					deg[nodenum]++;
+					deg[inpnum]++;
+					inpnum=0;
+				}
+				else
+				{
+					//printf("CHAR %c",inpstr[i]
+					inpnum=inpnum*10+inpstr[i]-'0';
+				}
+			}
+			nodenum++;
+		}
+		//Read in  END String
+		gets(s);
+		gets(s);
+		/*for(int i=0;i&lt;n;i++)
+		{
+			printf("DEG[%d]=%dn",i,deg[i]);
+		}*/
+		bool isEuler=true;
+		if(mThe content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog)0)					//START FROM 0 and END to 0 NO ODD POINTS
+		{
+			for(int i=0;i&lt;n;i++)
+			{
+				sumdeg+=deg[i];
+				if(deg[i]%2)
+				{
+					isEuler=false;
+					break;
+				}
+			}
+		}
+		else
+		{
+			for(int i=0;i&lt;n;i++)
+			{
+				sumdeg+=deg[i];
+				if(iThe content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog)0 || iThe content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog)m) continue;
+				if(deg[i]%2)
+				{
+					isEuler=false;
+					break;
+				}
+			}
+			if(!(deg[0]%2 &amp;&amp; deg[m]%2))
+			{
+				isEuler=false;
+			}
+		}
+		if(isEuler) printf("YES %dn",sumdeg/2);
+		else printf("NOn");
+	}
+	return 0;
+}
+</code></pre></div></div><p> </p><hr /><p><a href="https://web.archive.org/web/20210418234931/https://void-shana.moe/category/acmalgo">ACM Algorithm</a>, <a href="https://web.archive.org/web/20210418234931/https://void-shana.moe/category/acmalgo/graphtheory">GraphTheory</a> <a href="https://web.archive.org/web/20210418234931/https://void-shana.moe/tag/c-linux">C. Linux</a>, <a href="https://web.archive.org/web/20210418234931/https://void-shana.moe/tag/kernel">kernel</a>, <a href="https://web.archive.org/web/20210418234931/https://void-shana.moe/tag/laravel">Laravel</a>, <a href="https://web.archive.org/web/20210418234931/https://void-shana.moe/tag/php">PHP</a>, <a href="https://web.archive.org/web/20210418234931/https://void-shana.moe/tag/python">Python</a>, <a href="https://web.archive.org/web/20210418234931/https://void-shana.moe/tag/shell">Shell</a>, <a href="https://web.archive.org/web/20210418234931/https://void-shana.moe/tag/web">Web</a>, <a href="https://web.archive.org/web/20210418234931/https://void-shana.moe/tag/wine">wine</a></p><hr /><h2 id="historical-comments">Historical Comments</h2><p>Post navigation ————— <a href="https://web.archive.org/web/20210418234931/https://void-shana.moe/webdev/laravel-%e5%ad%a6%e4%b9%a0%e7%ac%94%e8%ae%b0-1-installation-and-configuration.html">NEXT<br /> Laravel 学习笔记 #1 Installation and Configuration</a> <a href="https://web.archive.org/web/20210418234931/https://void-shana.moe/acmalgo/%e5%9f%ba%e6%9c%ac%e8%be%93%e5%85%a5-scanf-getchar-gets-%e7%9a%84%e5%8c%ba%e5%88%ab.html">PREVIOUS 把基本输入 scanf getchar gets 的区别</a></p><script src="https://giscus.app/client.js" data-repo="VOID001/VOID001.github.io" data-repo-id="MDEwOlJlcG9zaXRvcnkzMzI0MDI4NQ==" data-category="Announcements" data-category-id="DIC_kwDOAfs03c4COSSU" data-mapping="pathname" data-reactions-enabled="1" data-emit-metadata="1" data-input-position="top" data-theme="light" data-lang="en" data-loading="lazy" crossorigin="anonymous" async> </script></article><div class="back"> <a href="/">Back</a></div><script src="https://cdn.bootcdn.net/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script> <script>hljs.highlightAll();</script></main></body></html>

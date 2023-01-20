@@ -1,0 +1,66 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1" /><title>Building your own live streaming site using Nginx RTMP & video.js</title><meta name="twitter:card" content="summary" /><meta name="twitter:site" content="@" /><meta name="twitter:title" content="Building your own live streaming site using Nginx RTMP & video.js" /><meta name="twitter:description" content="The content is recoverd from Wordpress Blog, for more details please check HERE"><meta name="description" content="The content is recoverd from Wordpress Blog, for more details please check HERE"><meta name="google-site-verification" content="epFgX0s_0RM3CdjwFcsewfXzPov2g8s9ZBOLyaIUH-o"><link rel="icon" href="/assets/favicon.png"><link rel="apple-touch-icon" href="/assets/touch-icon.png"><link rel="stylesheet" href="//code.cdn.mozilla.net/fonts/fira.css"><link rel="stylesheet" href="/assets/core.css"><link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.1.1/css/all.min.css" rel="stylesheet"><link href="https://cdn.bootcdn.net/ajax/libs/highlight.js/11.5.0/styles/github.min.css" rel="stylesheet"><link rel="canonical" href="/posts/building-your-own-live-streaming-site-using-nginx-rtmp-video-js"><link rel="alternate" type="application/atom+xml" title="VOID001's WOWO" href="/feed.xml" /> <script> (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){ (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o), m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m) })(window,document,'script','//www.google-analytics.com/analytics.js','ga'); ga( 'create', 'UA-73703130-2', 'auto' ); ga( 'send', 'pageview' ); </script></head><body><aside class="logo"> <a href="/"> <img src="/assets/avatar.jpeg" class="gravatar"> </a> <span class="logo-prompt">Back to Home</span></aside><div class="footer-flex" style="margin-bottom: 4px"> Thinking, Coding, Improving</div><div class="footer-flex" style="color: #333333"> <a href="http://github.com/VOID001"><i class="fa-brands fa-lg fa-github"></i></a> <span style="margin: 4px"></span> <a href="https://t.me/s/void001_fav"><i class="fa-brands fa-lg fa-telegram"></i></a> <span style="margin: 4px"></span> <a href="/feed"><i class="fa-solid fa-lg fa-rss"></i></a> <span style="margin: 4px"></span> <a href="/friends"><i class="fa-solid fa-lg fa-ship"></i></a></div><script src="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.1.1/js/fontawesome.min.js"></script><main> <noscript><style> article .footnotes { display: block; }</style></noscript><article><div class="center"><h1>Building your own live streaming site using Nginx RTMP & video.js</h1><time>September 12, 2017</time> <span>[ ]</span></div><div class="divider"></div><p>The content is recoverd from Wordpress Blog, for more details please check <a href="recover-my-blog">HERE</a></p><h5 id="september-12-2017"><a href="https://web.archive.org/web/20210514123546/https://void-shana.moe/linux/building-your-own-live-streaming-site-using-nginx-rtmp-video-js.html" title="10:27 pm">September 12, 2017</a></h5><p><a href="https://web.archive.org/web/20210514123546/https://void-shana.moe/author/void001" title="View all posts by VOID001">VOID001</a> Comments <a href="https://web.archive.org/web/20210514123546/https://void-shana.moe/linux/building-your-own-live-streaming-site-using-nginx-rtmp-video-js.html#comments">1 comment</a></p><p>As I said in <a href="https://web.archive.org/web/20210514123546/https://twitter.com/VOID_133/status/906175711211167745">twitter</a> I will update my blog at least once a week, so now I am writing this week’s blog (Although this article doesn’t contain too much technical detail) I just built my personal live server, for the trail version on bilibili is expired. And I don’t want to send sensitive personal data to that platform, so I decided to build one on my own.</p><p>Previously I built a live stream service using my raspberry pi, and only use the most simple configuration of nginx, and it does not play very well. Now I have bought a shiny new VPS from CAT.NET with my partner onion, it’s awesomely fast and fluent, so I use this server to build my live stream service, including a frontend to play the stream.</p><p>The tutorial is here: <a href="https://web.archive.org/web/20210514123546/https://docs.peer5.com/guides/setting-up-hls-live-streaming-server-using-nginx/">https://docs.peer5.com/guides/setting-up-hls-live-streaming-server-using-nginx/</a></p><p>The following guide will show how to build one stream server on Archlinux (Yes, archilnux ONLY, but compatible with many other distro), Just follow the basic steps:</p><h3 id="setting-up-the-rtmp-streaming-server-with-hls">Setting up the RTMP Streaming Server with HLS</h3><ol><li>Install <code class="language-plaintext highlighter-rouge">nginx-rtmp</code> from AUR (nginx-mainline + nginx-rtmp-module may also works, but I have problems when compiling the module using makepkg)</li><li>If you have previous nginx configuration, install nginx-rtmp will conflict with nginx, just remove it, no worry about the configuration file you wrote, it will be stored at /etc/nginx/nginx.conf.pacsave</li><li>If you have a previous installation of nginx, after install <code class="language-plaintext highlighter-rouge">nginx-rtmp</code>  exec the command <code class="language-plaintext highlighter-rouge">mv /etc/nginx/nginx.conf /etc/nginx/nginx.conf.old</code> and <code class="language-plaintext highlighter-rouge">mv /etc/nginx/nginx.conf.pacsave /etc/nginx/nginx.conf</code></li><li>Then restart the nginx server and reload the daemon <code class="language-plaintext highlighter-rouge">systemctl daemon-reload</code>  &amp;&amp; <code class="language-plaintext highlighter-rouge">systemctl restart nginx.conf</code></li><li>This restart shouldn’t generate any error except you have error in your previous nginx config</li><li>Then <strong>create the rtmp.conf file</strong> (or whatever you name it)  example configuration can be found <a href="https://web.archive.org/web/20210514123546/https://github.com/arut/nginx-rtmp-module/wiki/Examples">here</a></li></ol><p>Here is my rtmp.conf, remember to include it in nginx.conf OUTSIDE the http block like this:</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>http {
+ ...
+}
+
+include rtmp.conf
+</code></pre></div></div><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>rtmp {
+        server {
+                
+
+                max\_connections 100;
+                chunk\_size 4096;
+                ping 30s;
+                notify\_method get;
+
+                application my\_live {
+                        live on;
+                        hls on;
+                        hls\_path /tmp/hls;
+                        hls\_fragment 3s;
+                        hls\_playlist\_length 60s;
+
+                }
+        }
+}
+
+</code></pre></div></div><p>Then you can use <a href="https://web.archive.org/web/20210514123546/https://obsproject.com/">OBS</a> or anything else to push to the livestream, in this example, you should push to</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>rtmp://example.com/my\_live
+</code></pre></div></div><p>In the key field just write something e.g: test</p><p>Remember to <code class="language-plaintext highlighter-rouge">mkdir /tmp/hls</code> before using the live stream</p><p> </p><h3 id="setting-up-the-live-streamdata-service">Setting up the Live Stream data service</h3><p>We need hls.js or videojs with hls supported, I choose the latter one.</p><p>create a config in /etc/nginx/sites-available</p><p>e.g: live.void-shana.moe.conf</p><p>put these lines in the config file</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>server {
+    listen 80;
+
+    location /stream {
+        # Disable cache
+        add\_header Cache-Control no-cache;
+
+        # CORS setup
+        add\_header 'Access-Control-Allow-Origin' '*' always;
+        add\_header 'Access-Control-Expose-Headers' 'Content-Length';
+
+        # allow CORS preflight requests
+        if ($request\_method = 'OPTIONS') {
+            add\_header 'Access-Control-Allow-Origin' '*';
+            add\_header 'Access-Control-Max-Age' 1728000;
+            add\_header 'Content-Type' 'text/plain charset=UTF-8';
+            add\_header 'Content-Length' 0;
+            return 204;
+        }
+
+        types {
+            application/vnd.apple.mpegurl m3u8;
+            video/mp2t ts;
+        }
+
+        alias /tmp/hls;
+    }
+}
+</code></pre></div></div><p>Then when you visit https://example.com/stream/test.m3u8 you will get the live stream playlist of live named “test”.</p><p>This *.m3u8 file is a text file that describes every segment to play (segments are named in <name>-<id>.ts format), here is a sample file</id></name></p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>#EXTM3U         
+#EXT-X-VERSION:3                 
+#EXT-X-MEDIA-SEQUENCE:0          
+#EXT-X-TARGETDURATION:8          
+#EXT-X-DISCONTINUITY             
+#EXTINF:8.333,  
+test-0.ts       
+#EXTINF:8.333,  
+test-1.ts       
+#EXTINF:8.334,  
+test-2.ts
+</code></pre></div></div><p>The videojs / hls.js will recognize format and parse it, fetch *.ts segments from server then play it one by one, making it looks like a live stream.</p><h3 id="create-a-webpage-to-show-it">Create a webpage to show it</h3><p>I use videojs with hls support for this, just take a look at view-source://live.void-shana.moe/ you can get a video player that works.</p><p>See https://github.com/videojs/videojs-contrib-hls#getting-started for more details</p><p> </p><h3 id="screenshot">Screenshot</h3><p><img src="https://web.archive.org/web/20210514123546im_/https://void-shana.moe/wp-content/uploads/2017/09/Spectacle.E22359-1024x640.png" alt="" /></p><h3 id="todo">TODO</h3><p>I didn’t find any credential configuration when setting up rtmp stream, this will make it dangerous when someone know my rtmp URI. Bad guy can push nasty live stream / video to my site, currently the URI is complex, and cannot be fetched from frontend (I only expose the hls interface). Future will try to support auth</p><p> </p><p>If you have problems when setting up the live stream service &amp; frontend, just feel free to comment below, I am glad to help</p><hr /><p><a href="https://web.archive.org/web/20210514123546/https://void-shana.moe/category/linux/archlinux">archlinux</a>, <a href="https://web.archive.org/web/20210514123546/https://void-shana.moe/category/linux">Linux</a> <a href="https://web.archive.org/web/20210514123546/https://void-shana.moe/tag/rtmp">rtmp</a>, <a href="https://web.archive.org/web/20210514123546/https://void-shana.moe/tag/video">video</a></p><hr /><h2 id="historical-comments">Historical Comments</h2><ol><li><p><img src="https://web.archive.org/web/20210514123546im_/https://secure.gravatar.com/avatar/fe0faba4dbcdeaec3e701acf14cd47fc?s=50&amp;d=identicon&amp;r=g" alt="" /> <strong>Mohammed</strong> says: <a href="https://web.archive.org/web/20210514123546/https://void-shana.moe/linux/building-your-own-live-streaming-site-using-nginx-rtmp-video-js.html#comment-388">April 26, 2018 at 8:00 pm</a> thanks for the article .. i can help in auth</p></li><li><p><img src="https://web.archive.org/web/20210514123546im_/https://secure.gravatar.com/avatar/fe0faba4dbcdeaec3e701acf14cd47fc?s=50&amp;d=identicon&amp;r=g" alt="" /> <strong>Mohammed</strong> says: <a href="https://web.archive.org/web/20210514123546/https://void-shana.moe/linux/building-your-own-live-streaming-site-using-nginx-rtmp-video-js.html#comment-388">April 26, 2018 at 8:00 pm</a> thanks for the article .. i can help in auth</p></li></ol><script src="https://giscus.app/client.js" data-repo="VOID001/VOID001.github.io" data-repo-id="MDEwOlJlcG9zaXRvcnkzMzI0MDI4NQ==" data-category="Announcements" data-category-id="DIC_kwDOAfs03c4COSSU" data-mapping="pathname" data-reactions-enabled="1" data-emit-metadata="1" data-input-position="top" data-theme="light" data-lang="en" data-loading="lazy" crossorigin="anonymous" async> </script></article><div class="back"> <a href="/">Back</a></div><script src="https://cdn.bootcdn.net/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script> <script>hljs.highlightAll();</script></main></body></html>

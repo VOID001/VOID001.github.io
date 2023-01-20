@@ -1,0 +1,57 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1" /><title>(Lua 源码解读 0) lstrlib.c 模式匹配系列函数解析</title><meta name="twitter:card" content="summary" /><meta name="twitter:site" content="@" /><meta name="twitter:title" content="(Lua 源码解读 0) lstrlib.c 模式匹配系列函数解析" /><meta name="twitter:description" content="The content is recoverd from Wordpress Blog, for more details please check HERE"><meta name="description" content="The content is recoverd from Wordpress Blog, for more details please check HERE"><meta name="google-site-verification" content="epFgX0s_0RM3CdjwFcsewfXzPov2g8s9ZBOLyaIUH-o"><link rel="icon" href="/assets/favicon.png"><link rel="apple-touch-icon" href="/assets/touch-icon.png"><link rel="stylesheet" href="//code.cdn.mozilla.net/fonts/fira.css"><link rel="stylesheet" href="/assets/core.css"><link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.1.1/css/all.min.css" rel="stylesheet"><link href="https://cdn.bootcdn.net/ajax/libs/highlight.js/11.5.0/styles/github.min.css" rel="stylesheet"><link rel="canonical" href="/posts/lua-%E6%BA%90%E7%A0%81%E8%A7%A3%E8%AF%BB-0-lstrlib-c-%E6%A8%A1%E5%BC%8F%E5%8C%B9%E9%85%8D%E7%B3%BB%E5%88%97%E5%87%BD%E6%95%B0%E8%A7%A3%E6%9E%90"><link rel="alternate" type="application/atom+xml" title="VOID001's WOWO" href="/feed.xml" /> <script> (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){ (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o), m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m) })(window,document,'script','//www.google-analytics.com/analytics.js','ga'); ga( 'create', 'UA-73703130-2', 'auto' ); ga( 'send', 'pageview' ); </script></head><body><aside class="logo"> <a href="/"> <img src="/assets/avatar.jpeg" class="gravatar"> </a> <span class="logo-prompt">Back to Home</span></aside><div class="footer-flex" style="margin-bottom: 4px"> Thinking, Coding, Improving</div><div class="footer-flex" style="color: #333333"> <a href="http://github.com/VOID001"><i class="fa-brands fa-lg fa-github"></i></a> <span style="margin: 4px"></span> <a href="https://t.me/s/void001_fav"><i class="fa-brands fa-lg fa-telegram"></i></a> <span style="margin: 4px"></span> <a href="/feed"><i class="fa-solid fa-lg fa-rss"></i></a> <span style="margin: 4px"></span> <a href="/friends"><i class="fa-solid fa-lg fa-ship"></i></a></div><script src="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.1.1/js/fontawesome.min.js"></script><main> <noscript><style> article .footnotes { display: block; }</style></noscript><article><div class="center"><h1>(Lua 源码解读 0) lstrlib.c 模式匹配系列函数解析</h1><time>September 3, 2016</time> <span>[ ]</span></div><div class="divider"></div><p>The content is recoverd from Wordpress Blog, for more details please check <a href="recover-my-blog">HERE</a></p><h5 id="september-3-2016"><a href="https://web.archive.org/web/20201020195343/https://void-shana.moe/linux/c/lua-%e6%ba%90%e7%a0%81%e8%a7%a3%e8%af%bb-0-lstrlib-c-%e6%a8%a1%e5%bc%8f%e5%8c%b9%e9%85%8d%e7%b3%bb%e5%88%97%e5%87%bd%e6%95%b0%e8%a7%a3%e6%9e%90.html" title="11:33 am">September 3, 2016</a></h5><p><a href="https://web.archive.org/web/20201020195343/https://void-shana.moe/author/void001" title="View all posts by VOID001">VOID001</a> Comments <a href="https://web.archive.org/web/20201020195343/https://void-shana.moe/linux/c/lua-%e6%ba%90%e7%a0%81%e8%a7%a3%e8%af%bb-0-lstrlib-c-%e6%a8%a1%e5%bc%8f%e5%8c%b9%e9%85%8d%e7%b3%bb%e5%88%97%e5%87%bd%e6%95%b0%e8%a7%a3%e6%9e%90.html#respond">0 Comment</a></p><h2 id="前言">前言</h2><p>当当当当~~~~ lua源码阅读的记录文开坑了， 窝准备把lua的源码都通读一遍，并且给出自己的记录&amp;体会，最后，根据阅读源码学到的东西，考虑实现一个相关的小project(这是一个大坑，flag已立)</p><p>提供一些我找到的对阅读源码有帮助的资源</p><p>http://del.icio.us/adnamin/lua+source</p><p>窝按照这里提供的顺序阅读lua源码， 至少起步是按照这个顺序来的，等到自己对这个代码比较熟练的时候，可能会考虑按照自己的喜好顺序来</p><p>https://www.reddit.com/comments/63hth/ask_reddit_which_oss_codebases_out_there_are_so/c02pxbp</p><p>lmathlib.c中的很多函数都只是一个wrapper的作用，在这里就先不过多介绍了，我们先来介绍lstrlib.c的函数&amp;功能</p><p>lstrlib.c提供了lua的字符串相关的库函数&amp;helper函数，一个重点功能是提供了pattern matching的功能，注意它提供的pattern和正则表达式是有区别的，应该说功能没有正则表达式强大，但是日常匹配使用也是够了，lua官方对这个pattern有一个很系统的解释，这里总结一下，并且理解这个对阅读相关的代码也有很大的帮助，先放一个Lua5.1原生文档对Pattern的说明的链接</p><p>https://www.lua.org/manual/5.1/manual.html#5.4.1</p><p>下面就来解释一下Lua里面的模式匹配及其定义的体系</p><h2 id="lua-的-pattern-体系">Lua 的 Pattern 体系</h2><ul><li>character class 是组成一个pattern串的基本单位， 每一个character class代表一类字符，他们可以是一个set里的，可以是set的补集，可以是转义字符定义的类型如%d数字%l小写字母等</li><li>pattern item是用来匹配的基本单位，一个pattern item由一个character class加上*,+,…等特定的符号组成，表示重复多次、一次等含义,几个特殊的pattern,一个是 %n, n可以是0-9的数字， 表示匹配的内容和capture的内容一致，%bxy表示balance match从x开始到y的一个字符串, 关于什么是balance match详见文档</li><li>pattern是匹配的基本单位,一个pattern由一个或者多个pattern item组成，可以在首部含有^尾部含有$，语意和正则表达式内的这两个符号的语意一致</li><li>capture 是将一个pattern用小括号括起来, 然后如果源子串match了这个括号内的pattern,会被“捕捉”(存储)起来供之后的匹配使用</li></ul><p> </p><h3 id="源码解析">源码解析</h3><p>首先我们来看一下 最下方export的函数,这里export了一系列的函数如下</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>static const luaL\_Reg strlib[] = {
+  {"byte", str\_byte},
+  {"char", str\_char},
+  {"dump", str\_dump},
+  {"find", str\_find},
+  {"format", str\_format},
+  {"gfind", gfind\_nodef},
+  {"gmatch", gmatch},
+  {"gsub", str\_gsub},
+  {"len", str\_len},
+  {"lower", str\_lower},
+  {"match", str\_match},
+  {"rep", str\_rep},
+  {"reverse", str\_reverse},
+  {"sub", str\_sub},
+  {"upper", str\_upper},
+  {NULL, NULL}
+};
+
+</code></pre></div></div><p>我们通过查看文档，对比名称发现，核心的函数string.find string.gmatch是用来处理整个Pattern Matching逻辑的函数，在源文件里这两个函数分别叫做 str_find, gmatch, 我们先来查看一下str_find函数，源码就不发上来了，大家可以很容易的在lua官网get到source code,这个函数就是一个wrapper,调用了str_find_aux（可以认为这是一个auxillary）我们下面来解析一下str_find_aux这个函数</p><p>我们首先来查看一下string.find的用法</p><h3 id="stringfind-s-pattern--init--plain"><code class="language-plaintext highlighter-rouge">string.find (s, pattern [, init [, plain]])</code></h3><p>用C去取lua的参数的时候,是通过lua的Stack去取的参数参数压栈顺序是从左到右依次压栈</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  size\_t l1, l2;
+  const char *s = luaL\_checklstring(L, 1, &amp;l1);
+  const char *p = luaL\_checklstring(L, 2, &amp;l2);
+  ptrdiff\_t init = posrelat(luaL\_optinteger(L, 3, 1), l1) - 1;
+  if (init &lt; 0) init = 0;
+  else if ((size\_t)(init) &gt; l1) init = (ptrdiff\_t)l1;
+</code></pre></div></div><p>上面这一段代码是从lua的Stack中获取参数到C, *s是s *p是pattern init最后为字符串的起始位置，luaL系列的这几个函数的第二个参数均是用于标示这个元素在栈中的位置,正数表示从Stack Bottom开始算起，负数表示栈顶算起, -1表示栈顶，想了解更多相关知识参考我之前的文章<a href="https://web.archive.org/web/20201020195343/https://voidisprogramer.com/linux/c/%e7%94%a8c%e8%af%ad%e8%a8%80%e6%93%8d%e4%bd%9clua.html">用C语言操作lua</a>,通过这些代码就获取到了用户传递给Lua的三个参数</p><p>下面的一段代码</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>if (find &amp;&amp; (lua\_toboolean(L, 4) ||  /* explicit request? */
+      strpbrk(p, SPECIALS) The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog) NULL)) {  /* or no special characters? */
+    /* do a plain search */
+    const char *s2 = lmemfind(s+init, l1-init, p, l2);
+    if (s2) {
+      lua\_pushinteger(L, s2-s+1);
+      lua\_pushinteger(L, s2-s+l2);
+      return 2;
+    }
+  }
+</code></pre></div></div><p>是处理plain search, 所谓plain search就是不带任何转义 特殊模式串,完全就是pattern是什么样的就去找什么(这时候  [, %,等在匹配的时候有特殊含义的符号,均不表达特殊含义而只是一个字符),plain search的条件也可以很清晰的看出来,如果这个字符串不含有特殊字符，或者传递的第四个参数plain The content is recoverd from Wordpress Blog, for more details please check <a href="recover-my-blog">HERE</a> true的话，那么就做plain search，并返回结果，将结果压栈, return 2表示返回两个值给caller</p><p>之后的这一段代码,是Pattern Matching的主体,这里面涉及到了字符串的模式匹配等内容,我们先来看一下</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>else {
+    MatchState ms;
+    int anchor = (*p The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog) '^') ? (p++, 1) : 0;
+    const char *s1=s+init;
+    ms.L = L;
+    ms.src\_init = s;
+    ms.src\_end = s+l1;
+    do {
+      const char *res;
+      ms.level = 0;
+      if ((res=match(&amp;ms, s1, p)) != NULL) {
+        if (find) {
+          lua\_pushinteger(L, s1-s+1);  /* start */
+          lua\_pushinteger(L, res-s);   /* end */
+          return push\_captures(&amp;ms, NULL, 0) + 2;
+        }
+        else
+          return push\_captures(&amp;ms, s1, res);
+      }
+    } while (s1++ &lt; ms.src\_end &amp;&amp; !anchor);
+  }
+</code></pre></div></div><p>首先去掉匹配pattern的锚点^,配置好MatchState(Lua使用matchState进行Pattern Matching的信息存储以及处理), 一个do循环从字符串的开头到结尾去match匹配的pattern， 有关match的解析，我会在之后的文中进行介绍，这里因为是第一篇lkua分析文，目前不会这么深入.</p><p>我们再来看一下gmatch这个函数</p><p>这里面有一个函数之前没有遇到过,就是这个<strong>lua_pushcclosure</strong>,因为目前我的知识有限，暂时理解为这个函数是用来传递一个函数到luaStack并且去调用它，对于这个函数的具体解读也会在之后进行</p><p>对于lstrlib.c的解读就到这里，主要是解读了Pattern Matching的相关内容,本人水平有限，刚接触lua源码，可能有的地方解答不对，欢迎大家批评指正，同时欢迎大家在下方评论留言探讨交流=w=</p><hr /><p><a href="https://web.archive.org/web/20201020195343/https://void-shana.moe/category/linux/c">C</a>, <a href="https://web.archive.org/web/20201020195343/https://void-shana.moe/category/linux/c/luasource">LuaSource</a> <a href="https://web.archive.org/web/20201020195343/https://void-shana.moe/tag/c-linux">C. Linux</a>, <a href="https://web.archive.org/web/20201020195343/https://void-shana.moe/tag/kernel">kernel</a>, <a href="https://web.archive.org/web/20201020195343/https://void-shana.moe/tag/laravel">Laravel</a>, <a href="https://web.archive.org/web/20201020195343/https://void-shana.moe/tag/php">PHP</a>, <a href="https://web.archive.org/web/20201020195343/https://void-shana.moe/tag/python">Python</a>, <a href="https://web.archive.org/web/20201020195343/https://void-shana.moe/tag/shell">Shell</a>, <a href="https://web.archive.org/web/20201020195343/https://void-shana.moe/tag/web">Web</a>, <a href="https://web.archive.org/web/20201020195343/https://void-shana.moe/tag/wine">wine</a></p><hr /><h2 id="historical-comments">Historical Comments</h2><p>Post navigation ————— <a href="https://web.archive.org/web/20201020195343/https://void-shana.moe/uncategorized/neuoj-developer-wanted.html">NEXT<br /> NEUOJ Developer Wanted!!!</a> <a href="https://web.archive.org/web/20201020195343/https://void-shana.moe/uncategorized/%e8%b0%83%e5%91%b3%e6%96%99bd.html">PREVIOUS Protected: 调味料BD</a></p><script src="https://giscus.app/client.js" data-repo="VOID001/VOID001.github.io" data-repo-id="MDEwOlJlcG9zaXRvcnkzMzI0MDI4NQ==" data-category="Announcements" data-category-id="DIC_kwDOAfs03c4COSSU" data-mapping="pathname" data-reactions-enabled="1" data-emit-metadata="1" data-input-position="top" data-theme="light" data-lang="en" data-loading="lazy" crossorigin="anonymous" async> </script></article><div class="back"> <a href="/">Back</a></div><script src="https://cdn.bootcdn.net/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script> <script>hljs.highlightAll();</script></main></body></html>

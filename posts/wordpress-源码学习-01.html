@@ -1,0 +1,201 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1" /><title>WordPress 源码学习</title><meta name="twitter:card" content="summary" /><meta name="twitter:site" content="@" /><meta name="twitter:title" content="WordPress 源码学习" /><meta name="twitter:description" content="The content is recoverd from Wordpress Blog, for more details please check HERE"><meta name="description" content="The content is recoverd from Wordpress Blog, for more details please check HERE"><meta name="google-site-verification" content="epFgX0s_0RM3CdjwFcsewfXzPov2g8s9ZBOLyaIUH-o"><link rel="icon" href="/assets/favicon.png"><link rel="apple-touch-icon" href="/assets/touch-icon.png"><link rel="stylesheet" href="//code.cdn.mozilla.net/fonts/fira.css"><link rel="stylesheet" href="/assets/core.css"><link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.1.1/css/all.min.css" rel="stylesheet"><link href="https://cdn.bootcdn.net/ajax/libs/highlight.js/11.5.0/styles/github.min.css" rel="stylesheet"><link rel="canonical" href="/posts/wordpress-%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0-01"><link rel="alternate" type="application/atom+xml" title="VOID001's WOWO" href="/feed.xml" /> <script> (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){ (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o), m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m) })(window,document,'script','//www.google-analytics.com/analytics.js','ga'); ga( 'create', 'UA-73703130-2', 'auto' ); ga( 'send', 'pageview' ); </script></head><body><aside class="logo"> <a href="/"> <img src="/assets/avatar.jpeg" class="gravatar"> </a> <span class="logo-prompt">Back to Home</span></aside><div class="footer-flex" style="margin-bottom: 4px"> Thinking, Coding, Improving</div><div class="footer-flex" style="color: #333333"> <a href="http://github.com/VOID001"><i class="fa-brands fa-lg fa-github"></i></a> <span style="margin: 4px"></span> <a href="https://t.me/s/void001_fav"><i class="fa-brands fa-lg fa-telegram"></i></a> <span style="margin: 4px"></span> <a href="/feed"><i class="fa-solid fa-lg fa-rss"></i></a> <span style="margin: 4px"></span> <a href="/friends"><i class="fa-solid fa-lg fa-ship"></i></a></div><script src="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.1.1/js/fontawesome.min.js"></script><main> <noscript><style> article .footnotes { display: block; }</style></noscript><article><div class="center"><h1>WordPress 源码学习</h1><time>August 31, 2014</time> <span>[ ]</span></div><div class="divider"></div><p>The content is recoverd from Wordpress Blog, for more details please check <a href="recover-my-blog">HERE</a></p><h5 id="august-31-2014"><a href="https://web.archive.org/web/20201204195450/https://void-shana.moe/webdev/wordpress-%e6%ba%90%e7%a0%81%e5%ad%a6%e4%b9%a0-01.html" title="11:36 am">August 31, 2014</a></h5><p><a href="https://web.archive.org/web/20201204195450/https://void-shana.moe/author/void001" title="View all posts by VOID001">VOID001</a> Comments <a href="https://web.archive.org/web/20201204195450/https://void-shana.moe/webdev/wordpress-%e6%ba%90%e7%a0%81%e5%ad%a6%e4%b9%a0-01.html#respond">0 Comment</a></p><p>接着 #00 来继续写 ，我们上一期看到wp-blog-header那个文件 ，里面包含了wp-load 和 template-loader.php 我们按照顺序先来看</p><p>首先我们先自己测试一下 <strong>include 和 require的区别</strong>  根据这段实例代码</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&lt;?php
+
+	echo "&lt;h1&gt;"."INCLUDE 1"."&lt;/h1&gt;";
+	require('./include1.txt');
+	echo INC;
+	echo "&lt;h1&gt;"."INCLUDE 2"."&lt;/h1&gt;";
+	include('./include2.php');
+	echo INC
+?&gt;
+</code></pre></div></div><p>其中 ，INC是在include2.php内定义的常量，  有人说  inlcude和require的一个区别是 include会把文件包含在整个代码的最前面 ，而require不会 ，按照他的说法 ，这个代码运行的时候运行到底一个echo INC 就应该输出了  INC的值 可实际上  运行结果是未定义的常量  ，所以 ，这个说法是错误的  include 和require 都是在运行到这里的时候，才会把文件包括进去，而不是在一开始就包括进去 。 下面测试一下  ，如果require的文件不存在会怎样</p><p>把sample.php的第一个require的文件名改为 mengmengda.php（这个文件真的不存在哦～）  我们得到了这样的错误报告</p><p><strong>Fatal error</strong>: require() [<a href="https://web.archive.org/web/20201204195450/http://localhost/wplearn/function.require">function.require</a>]: Failed opening required ‘./mengmengda.php’ (include_path=’.;C:php5pear’) in <strong>F:WAMPwwwwplearnindex.php</strong> on line <strong>4</strong></p><p>果然是个FatalError  我们再试试把include的改为  mengmengda.php</p><p>index.php文件正常显示，除了报了两个警告以外，没有其它的问题  ，看来这就是include和require的区别了 ~</p><p>下面我们继续研究wp-blog-header.php里面require的那几个 ，首先深入研究wp-load.php</p><p>这段注释里面已经说明了，这个代码做了什么  来看一下注释：</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/**
+ * Bootstrap file for setting the ABSPATH constant
+ * and loading the wp-config.php file. The wp-config.php
+ * file will then load the wp-settings.php file, which
+ * will then set up the WordPress environment.
+ *
+ * If the wp-config.php file is not found then an error
+ * will be displayed asking the visitor to set up the
+ * wp-config.php file.
+ *
+ * Will also search for wp-config.php in WordPress' parent
+ * directory to allow the WordPress directory to remain
+ * untouched.
+ *
+ * @internal This file must be parsable by PHP4.
+ *
+ * @package WordPress
+ */
+</code></pre></div></div><p>也就是说 ，wp-load是一个引导程序(bootstrap)，这个引导程序定义了ABSPATH绝对路径 这个常量 然后 会加载wp-config并且由wp-config来加载wp-settings这个文件，如果不存在wp-config那么就会要求用户创建wp-config.php  这个bootstrap也会在WP的父母目录下搜索wp-config这个文件，保证WP的目录不被触碰(逗号后面这句话没明白)  在内部这段代码必须以php4编译</p><p>下面是 wp-load的代码</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&lt;?php
+/**
+ * Bootstrap file for setting the ABSPATH constant
+ * and loading the wp-config.php file. The wp-config.php
+ * file will then load the wp-settings.php file, which
+ * will then set up the WordPress environment.
+ *
+ * If the wp-config.php file is not found then an error
+ * will be displayed asking the visitor to set up the
+ * wp-config.php file.
+ *
+ * Will also search for wp-config.php in WordPress' parent
+ * directory to allow the WordPress directory to remain
+ * untouched.
+ *
+ * @internal This file must be parsable by PHP4.
+ *
+ * @package WordPress
+ */
+
+/** Define ABSPATH as this file's directory */
+define( 'ABSPATH', dirname(\_\_FILE\_\_) . '/' );
+
+error\_reporting( E\_CORE\_ERROR | E\_CORE\_WARNING | E\_COMPILE\_ERROR | E\_ERROR | E\_WARNING | E\_PARSE | E\_USER\_ERROR | E\_USER\_WARNING | E\_RECOVERABLE\_ERROR );
+
+if ( file\_exists( ABSPATH . 'wp-config.php') ) {
+
+	/** The config file resides in ABSPATH */
+	require\_once( ABSPATH . 'wp-config.php' );
+
+} elseif ( file\_exists( dirname(ABSPATH) . '/wp-config.php' ) &amp;&amp; ! file\_exists( dirname(ABSPATH) . '/wp-settings.php' ) ) {
+
+	/** The config file resides one level above ABSPATH but is not part of another install */
+	require\_once( dirname(ABSPATH) . '/wp-config.php' );
+
+} else {
+
+	// A config file doesn't exist
+
+	// Set a path for the link to the installer
+	if ( strpos($\_SERVER['PHP\_SELF'], 'wp-admin') !The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog) false )
+		$path = 'setup-config.php';
+	else
+		$path = 'wp-admin/setup-config.php';
+
+	define( 'WPINC', 'wp-includes' );
+	define( 'WP\_CONTENT\_DIR', ABSPATH . 'wp-content' );
+	require\_once( ABSPATH . WPINC . '/load.php' );
+	require\_once( ABSPATH . WPINC . '/version.php' );
+
+	wp\_load\_translations\_early();
+	wp\_check\_php\_mysql\_versions();
+
+	// Die with an error message
+	$die  = \_\_( "There doesn't seem to be a &lt;code&gt;wp-config.php&lt;/code&gt; file. I need this before we can get started." ) . '&lt;/p&gt;';
+	$die .= '&lt;p&gt;' . \_\_( "Need more help? &lt;a href='http://codex.wordpress.org/Editing\_wp-config.php'&gt;We got it&lt;/a&gt;." ) . '&lt;/p&gt;';
+	$die .= '&lt;p&gt;' . \_\_( "You can create a &lt;code&gt;wp-config.php&lt;/code&gt; file through a web interface, but this doesn't work for all server setups. The safest way is to manually create the file." ) . '&lt;/p&gt;';
+	$die .= '&lt;p&gt;&lt;a href="' . $path . '" class="button"&gt;' . \_\_( "Create a Configuration File" ) . '&lt;/a&gt;';
+
+	wp\_die( $die, \_\_( 'WordPress &amp;rsaquo; Error' ) );
+}
+</code></pre></div></div><table><tbody><tr><td>error_reporting<a href="https://web.archive.org/web/20201204195450/https://php.net/manual/zh/function.error-reporting.php">这个函数</a>   就是设置报错级别的一个函数  ，  用法就是 error_reporting(CONSTANT1</td><td>CONST 2</td><td>…)  设置了之后 系统会把你指定的类型的错误报告，其他的不报告 ，举个例子 ，如果是  error_report(0)那么 就不会报告几乎任何错误 ，上面那个sample.php的代码 会输出一行 INCLUDE1 然后由于编译错误 ，不能继续运行了， 但是由于你的报错级别设定，不会显示错误信息 。   而如果你把常量定为-1 即error_report(-1)那么PHP会报告所有已知的错误和警告</td></tr></tbody></table><p>下面这段代码就是检查 wp-config.php是否存在了～</p><p>首先 ，如果这个文件(wp-config)存在于当前的目录下，那么就加载它   如果这个文件存在于WP的父母目录， 并且在当前目录的父母目录不存在wp-settings 这一文件，加载wp-config<strong>(没看明白)</strong>如果都不是  就说明wp config还没被配置，这时候就会要求配置wp-config也就是下面的代码   我们来看一下else时候执行的代码    首先 ，获得$_SERVER数组里的$index为 PHP_SELF的变量值,这个值经测试为 /index.php,暂时猜测这个变量的值是目前你所在的网页的路径名 and 文件名  这里还需要再查阅资料 ，下面 我们先跳过wp_load_translations_early 以及下面的1个函数，因为这些函数都在**functions.php文件下 ，我们先来看 ，如果存在wp-config这个文件，会如何执行下面的代码 ：</p><p>下面是 wp-config的代码 ：</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&lt;?php
+/** 
+ * WordPress 基础配置文件。
+ *
+ * 本文件包含以下配置选项: MySQL 设置、数据库表名前缀、
+ * 密匙、WordPress 语言设定以及 ABSPATH。如需更多信息，请访问
+ * {@link http://codex.wordpress.org/Editing\_wp-config.php 编辑
+ * wp-config.php} Codex 页面。MySQL 设置具体信息请咨询您的空间提供商。
+ *
+ * 这个文件用在于安装程序自动生成 wp-config.php 配置文件，
+ * 您可以手动复制这个文件，并重命名为 wp-config.php，然后输入相关信息。
+ *
+ * @Author Elmer Zhang &lt;[[email protected]](/web/20201204195450/https://void-shana.moe/cdn-cgi/l/email-protection)&gt;
+ * @package WordPress
+ */
+
+// ** MySQL 设置 - 具体信息来自您正在使用的主机 ** //
+/** WordPress 数据库的名称 */
+define('DB\_NAME', SAE\_MYSQL\_DB);
+
+/** MySQL 数据库用户名 */
+define('DB\_USER', SAE\_MYSQL\_USER);
+
+/** MySQL 数据库密码 */
+define('DB\_PASSWORD', SAE\_MYSQL\_PASS);
+
+/** MySQL 主机 */
+define('DB\_HOST', SAE\_MYSQL\_HOST\_M.':'.SAE\_MYSQL\_PORT);
+
+/** 创建数据表时默认的文字编码 */
+define('DB\_CHARSET', 'utf8');
+
+/** 数据库整理类型。如不确定请勿更改 */
+define('DB\_COLLATE', '');
+
+define('WP\_USE\_MULTIPLE\_DB', true);
+
+$db\_list = array(
+		'write'=&gt; array(
+			array(
+				'db\_host' =&gt; SAE\_MYSQL\_HOST\_M.':'.SAE\_MYSQL\_PORT,
+				'db\_user'=&gt; SAE\_MYSQL\_USER,
+				'db\_password'=&gt; SAE\_MYSQL\_PASS,
+				'db\_name'=&gt; SAE\_MYSQL\_DB,
+				'db\_charset'=&gt; 'utf8'
+				)
+			),
+		'read'=&gt; array(
+			array(
+				'db\_host' =&gt; SAE\_MYSQL\_HOST\_S.':'.SAE\_MYSQL\_PORT,
+				'db\_user'=&gt; SAE\_MYSQL\_USER,
+				'db\_password'=&gt; SAE\_MYSQL\_PASS,
+				'db\_name'=&gt; SAE\_MYSQL\_DB,
+				'db\_charset'=&gt; 'utf8'
+				)
+			),
+		);
+$global\_db\_list = $db\_list['write'];
+
+/**#@+
+ * 身份密匙设定。
+ *
+ * 您可以随意写一些字符
+ * 或者直接访问 {@link https://api.wordpress.org/secret-key/1.1/salt/ WordPress.org 私钥生成服务}，
+ * 任何修改都会导致 cookie 失效，所有用户必须重新登录。
+ *
+ * @since 2.6.0
+ */
+define('AUTH\_KEY',         hash\_hmac('sha1', SAE\_ACCESSKEY . 'AUTH\_KEY', SAE\_SECRETKEY ));
+define('SECURE\_AUTH\_KEY',  hash\_hmac('sha1', SAE\_ACCESSKEY . 'SECURE\_AUTH\_KEY', SAE\_SECRETKEY ));
+define('LOGGED\_IN\_KEY',    hash\_hmac('sha1', SAE\_ACCESSKEY . 'LOGGED\_IN\_KEY', SAE\_SECRETKEY ));
+define('NONCE\_KEY',        hash\_hmac('sha1', SAE\_ACCESSKEY . 'NONCE\_KEY', SAE\_SECRETKEY ));
+define('AUTH\_SALT',        hash\_hmac('sha1', SAE\_ACCESSKEY . 'AUTH\_SALT', SAE\_SECRETKEY ));
+define('SECURE\_AUTH\_SALT', hash\_hmac('sha1', SAE\_ACCESSKEY . 'SECURE\_AUTH\_SALT', SAE\_SECRETKEY ));
+define('LOGGED\_IN\_SALT',   hash\_hmac('sha1', SAE\_ACCESSKEY . 'LOGGED\_IN\_SALT', SAE\_SECRETKEY ));
+define('NONCE\_SALT',       hash\_hmac('sha1', SAE\_ACCESSKEY . 'NONCE\_SALT', SAE\_SECRETKEY ));
+
+/**#@-*/
+
+/**
+ * WordPress 数据表前缀。
+ *
+ * 如果您有在同一数据库内安装多个 WordPress 的需求，请为每个 WordPress 设置不同的数据表前缀。
+ * 前缀名只能为数字、字母加下划线。
+ */
+$table\_prefix  = 'wp\_';
+
+/**
+ * WordPress 语言设置，默认为英语。
+ *
+ * 本项设定能够让 WordPress 显示您需要的语言。
+ * wp-content/languages 内应放置同名的 .mo 语言文件。
+ * 要使用 WordPress 简体中文界面，只需填入 zh\_CN。
+ */
+define ('WPLANG', 'zh\_CN');
+
+/**
+ * 开发者专用：WordPress 调试模式。
+ *
+ * 将这个值改为“true”，WordPress 将显示所有开发过程中的提示。
+ * 强烈建议插件开发者在开发环境中启用本功能。
+ */
+define('WP\_DEBUG', false);
+
+/* 好了！请不要再继续编辑。请保存该文件。 */
+
+/** WordPress 目录的绝对路径。 */
+if ( !defined('ABSPATH') )
+	define('ABSPATH', dirname(\_\_FILE\_\_) . '/');
+
+/** 设置 WordPress 变量和包含文件。 */
+require\_once(ABSPATH . 'wp-settings.php');
+</code></pre></div></div><p>这个代码没什么太多需要说明的  ，它实际上就是做了很多定义的工作  ，定义了很多常量，然后在最后包含了  wp-settings.php这个文件  这个文件才是重头戏～</p><p>wp-settings.php这个文件需要很长时间来研究 ，这次就先到这里～下次开始研究wp-settings.php</p><p> </p><p> </p><hr /><p><a href="https://web.archive.org/web/20201204195450/https://void-shana.moe/category/webdev/php">PHP</a>, <a href="https://web.archive.org/web/20201204195450/https://void-shana.moe/category/webdev">Web Develop</a> <a href="https://web.archive.org/web/20201204195450/https://void-shana.moe/tag/c-linux">C. Linux</a>, <a href="https://web.archive.org/web/20201204195450/https://void-shana.moe/tag/kernel">kernel</a>, <a href="https://web.archive.org/web/20201204195450/https://void-shana.moe/tag/laravel">Laravel</a>, <a href="https://web.archive.org/web/20201204195450/https://void-shana.moe/tag/php">PHP</a>, <a href="https://web.archive.org/web/20201204195450/https://void-shana.moe/tag/python">Python</a>, <a href="https://web.archive.org/web/20201204195450/https://void-shana.moe/tag/shell">Shell</a>, <a href="https://web.archive.org/web/20201204195450/https://void-shana.moe/tag/web">Web</a>, <a href="https://web.archive.org/web/20201204195450/https://void-shana.moe/tag/wine">wine</a></p><hr /><h2 id="historical-comments">Historical Comments</h2><p>Post navigation ————— <a href="https://web.archive.org/web/20201204195450/https://void-shana.moe/webdev/wordpress-%e6%ba%90%e7%a0%81%e5%ad%a6%e4%b9%a0-02.html">NEXT<br /> WordPress 源码学习 #02</a> <a href="https://web.archive.org/web/20201204195450/https://void-shana.moe/webdev/wordpress-%e6%ba%90%e7%a0%81%e5%ad%a6%e4%b9%a0-00.html">PREVIOUS WordPress 源码学习 #00</a></p><script src="https://giscus.app/client.js" data-repo="VOID001/VOID001.github.io" data-repo-id="MDEwOlJlcG9zaXRvcnkzMzI0MDI4NQ==" data-category="Announcements" data-category-id="DIC_kwDOAfs03c4COSSU" data-mapping="pathname" data-reactions-enabled="1" data-emit-metadata="1" data-input-position="top" data-theme="light" data-lang="en" data-loading="lazy" crossorigin="anonymous" async> </script></article><div class="back"> <a href="/">Back</a></div><script src="https://cdn.bootcdn.net/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script> <script>hljs.highlightAll();</script></main></body></html>

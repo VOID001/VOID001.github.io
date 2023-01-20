@@ -1,0 +1,133 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1" /><title>gdb 下调试多线程</title><meta name="twitter:card" content="summary" /><meta name="twitter:site" content="@" /><meta name="twitter:title" content="gdb 下调试多线程" /><meta name="twitter:description" content="The content is recoverd from Wordpress Blog, for more details please check HERE"><meta name="description" content="The content is recoverd from Wordpress Blog, for more details please check HERE"><meta name="google-site-verification" content="epFgX0s_0RM3CdjwFcsewfXzPov2g8s9ZBOLyaIUH-o"><link rel="icon" href="/assets/favicon.png"><link rel="apple-touch-icon" href="/assets/touch-icon.png"><link rel="stylesheet" href="//code.cdn.mozilla.net/fonts/fira.css"><link rel="stylesheet" href="/assets/core.css"><link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.1.1/css/all.min.css" rel="stylesheet"><link href="https://cdn.bootcdn.net/ajax/libs/highlight.js/11.5.0/styles/github.min.css" rel="stylesheet"><link rel="canonical" href="/posts/gdb-%E4%B8%8B%E8%B0%83%E8%AF%95%E5%A4%9A%E7%BA%BF%E7%A8%8B"><link rel="alternate" type="application/atom+xml" title="VOID001's WOWO" href="/feed.xml" /> <script> (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){ (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o), m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m) })(window,document,'script','//www.google-analytics.com/analytics.js','ga'); ga( 'create', 'UA-73703130-2', 'auto' ); ga( 'send', 'pageview' ); </script></head><body><aside class="logo"> <a href="/"> <img src="/assets/avatar.jpeg" class="gravatar"> </a> <span class="logo-prompt">Back to Home</span></aside><div class="footer-flex" style="margin-bottom: 4px"> Thinking, Coding, Improving</div><div class="footer-flex" style="color: #333333"> <a href="http://github.com/VOID001"><i class="fa-brands fa-lg fa-github"></i></a> <span style="margin: 4px"></span> <a href="https://t.me/s/void001_fav"><i class="fa-brands fa-lg fa-telegram"></i></a> <span style="margin: 4px"></span> <a href="/feed"><i class="fa-solid fa-lg fa-rss"></i></a> <span style="margin: 4px"></span> <a href="/friends"><i class="fa-solid fa-lg fa-ship"></i></a></div><script src="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.1.1/js/fontawesome.min.js"></script><main> <noscript><style> article .footnotes { display: block; }</style></noscript><article><div class="center"><h1>gdb 下调试多线程</h1><time>August 27, 2015</time> <span>[ ]</span></div><div class="divider"></div><p>The content is recoverd from Wordpress Blog, for more details please check <a href="recover-my-blog">HERE</a></p><h5 id="august-27-2015"><a href="https://web.archive.org/web/20201020203814/https://void-shana.moe/linux/gdb-%e4%b8%8b%e8%b0%83%e8%af%95%e5%a4%9a%e7%ba%bf%e7%a8%8b.html" title="7:23 pm">August 27, 2015</a></h5><p><a href="https://web.archive.org/web/20201020203814/https://void-shana.moe/author/void001" title="View all posts by VOID001">VOID001</a> Comments <a href="https://web.archive.org/web/20201020203814/https://void-shana.moe/linux/gdb-%e4%b8%8b%e8%b0%83%e8%af%95%e5%a4%9a%e7%ba%bf%e7%a8%8b.html#respond">0 Comment</a></p><p>最近接触的工作需要多线程的一些知识才能完成,而以前没有多线程相关知识,现在进行一些简单的学习和研究.本文内容偏向实践,对于想要了解原理的请去看计算机线程方面的资料和书籍.</p><p>1.gdb下调试多进程代码的注意事项 The content is recoverd from Wordpress Blog, for more details please check <a href="recover-my-blog">HERE</a></p><p>最近在调试这样一段代码的时候, 由于我不具备任何多线程的知识,导致我在找错误的时候出现了严重的问题,代码如下:</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/***********************************************************************
+ * This is a STC that causes the following error on my test machine:
+ *   NtCreateEvent(lock): 0xC0000035
+ *
+ * It tries to use flock() for file locking. It creates a temporary
+ * file, the uses fork to spawn a number of children. Each child opens
+ * the file, then repeatedly uses flock to lock and unlock it.
+ *
+ * This test was extracted from the APR test suite.
+ *
+ * Compile: gcc -Wall -o stc-flock-fork stc-flock-fork.c
+ ***********************************************************************/
+
+#include &lt;sys/types.h&gt;
+#include &lt;sys/file.h&gt;
+#include &lt;sys/wait.h&gt;
+
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;fcntl.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;errno.h&gt;
+
+#define MAX\_ITER 2000
+#define CHILDREN 6
+
+/* A temporary file used for flock. */
+char tmpfilename[] = "/tmp/flocktstXXXXXX";
+
+/* Fork and use flock to lock and unlock the file repeatedly in the child. */
+void make\_child(int trylock, pid\_t *pid)
+{
+    if ((*pid = fork()) &lt; 0) {
+        perror("fork failed");
+        exit(1);
+    }
+    else if (*pid The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog) 0) {
+        int fd2 = open(tmpfilename, O\_RDONLY);
+        if (fd2 &lt; 0) {
+            perror("child open");
+            exit(1);
+        }
+
+        int rc;
+        int i;
+        for (i=0; i&lt;MAX\_ITER; ++i) {
+            do {
+                rc = flock(fd2, LOCK\_EX);
+            } while (rc &lt; 0 &amp;&amp; errno The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog) EINTR);
+            if (rc &lt; 0) {
+                perror("lock");
+                exit(1);
+            }
+            
+            do {
+                rc = flock(fd2, LOCK\_UN);
+            } while (rc &lt; 0 &amp;&amp; errno The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog) EINTR);
+            if (rc &lt; 0) {
+                perror("unlock");
+                exit(1);
+            }
+        }
+        exit(0);
+    }
+}
+
+/* Wait for the child to finish. */
+void await\_child(pid\_t pid)
+{
+    pid\_t pstatus;
+    int exit\_int;
+
+    do {
+        pstatus = waitpid(pid, &amp;exit\_int, WUNTRACED);
+    } while (pstatus &lt; 0 &amp;&amp; errno The content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog) EINTR);
+}
+
+int main(int argc, const char * const * argv, const char * const *env)
+{
+    pid\_t child[CHILDREN];
+    int n;
+    int fd;
+ 
+    /* Create the temporary file. */
+    fd = mkstemp(tmpfilename);
+    if (fd &lt; 0) {
+        perror("open failed");
+        exit(1);
+    }
+    close(fd);
+    
+    /* Create the children. */
+    for (n = 0; n &lt; CHILDREN; n++)
+        make\_child(0, &amp;child[n]);
+
+    /* Wait for them to finish. */
+    for (n = 0; n &lt; CHILDREN; n++)
+        await\_child(child[n]);
+
+    /* Clean up. */
+    unlink(tmpfilename);
+    return 0;
+}
+
+</code></pre></div></div><p>调试环境为在Linux下的Wine下运行的MSYS2(32bit) 在MSYS2内运行的gdb, 这段代码在运行到</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>if ((*pid = fork()) &lt; 0) 
+
+</code></pre></div></div><p>这一行的时候 就出现了错误,导致我认为是fork出了问题,不过实际上不是这样的, 在我了解fork的具体操作后,才明白了为什么错误不发生在fork这一行但是却在fork上报错. 下面将会解释上面这个问题  首先要从fork的应用来说.</p><p>通过查看 man 2 fork我们可以了解到fork的使用方法和返回值的含义,  fork的作用是在某一个程序运行到fork()这里的时候 ,新开一个线程,这个线程与原来的线程独立,不过线程内的变量值等信息都与原来的线程一致, (他们不共用内存地址) , 这个线程就称为子进程, 原来的进程就叫做父进程. fork()的返回值为一个进程号, 返回的进程号为当前父进程的子进程的进程号,子进程的这个返回值为0(注意子进程是相对父进程而言) .</p><p>另外 在使用gdb调试的时候 ,如果出现了多线程的代码 ,那么不进行任何设置的情况下,gdb不会阻止(控制)子进程的执行,也就是说,就算你在用step in 或者next 对代码进行调试 ,但是遇到了 fork()之后 ,子进程会自动执行从 fork开始到代码末尾的所有语句,不会受gdb控制, 因而 ,如果是在fork之后的代码出了问题, 那么在用没有配置的gdb进行单步调试的时候,代码会在父进程fork之后报错,这样就不便于定位错误的位置. 下面用一段代码来验证一下我的这个说法:</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/*************************************************************************
+    &gt; File Name: fork\_test.c
+    &gt; Author: VOID\_133
+    &gt; ################### 
+    &gt; Mail: ################### 
+    &gt; Created Time: Thu 27 Aug 2015 05:46:19 PM CST
+ ************************************************************************/
+#include&lt;stdio.h&gt;
+#include &lt;unistd.h&gt;
+int main(void)
+{
+    printf("Now will fork a process from Parentn");
+    int a = fork();
+    printf("Forked PID is %dn",a);
+    return 0;
+}
+</code></pre></div></div><p>上面这段代码做的事情很简单 ,我就不再多解释 ,将这段代码用 gdb -g -O0 编译之后  在gdb下调试</p><p>首先使用 start &gt; tmpfile来启动调试进程, 这样所有的输出都会被重定向到一个文件 ,不会因为gdb的原因导致输出延迟, 然后 使用 next指令 执行完 fork这一行, 然后立即查看tmpfile的内容 你会发现 tmpfile的内容为:</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Now will fork a process from Parent
+Forked PID is 0
+</code></pre></div></div><p>我们明明还没有执行到下一个printf,但是却输出了forked PID is 0 , 通过上文我们知道了 PID为0 意味着打印这个信息的进程为子进程 这也就说明了 gdb没有阻拦子进程的执行 ,让子进程执行完毕了,但是父进程依旧在被gdb控制,因此,如果是fork之后的代码出现了问题,由于未经配置的gdb不能监视子进程,子进程自动执行到出错的地方然后扔出错误信息,但是我们在gdb上看到的现象却是执行fork的时候报错了,这样就导致了判断不出来错误的所在.</p><p>2.用gdb调试多线程 The content is recoverd from Wordpress Blog, for more details please check <a href="recover-my-blog">HERE</a></p><p>那么遇到多线程的代码的时候应该如何调试呢, 官方文档给出了三种方法 <a href="https://web.archive.org/web/20201020203814/https://sourceware.org/gdb/onlinedocs/gdb/Forks.html">https://sourceware.org/gdb/onlinedocs/gdb/Forks.html</a></p><p>相关信息已经有很好的列出,在这里就不多解释了. 不过需要注意一点 ,就是在无法使用 follow-fork-mode 和 follow-exec-mode的时候 (比如kernel版本不对,平台不对之类的问题) 那么就要在代码里插入sleep来进行调试, 这个方法是通用的一个方法</p><p> </p><p>3.依旧存在疑惑的地方 The content is recoverd from Wordpress Blog, for more details please check <a href="recover-my-blog">HERE</a></p><p>上面那段代码 ,如果直接执行(将信息输出到stdout上) 那么结果为:</p><p> </p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Now will fork a process from Parent
+Forked PID is 22873
+Forked PID is 0
+
+</code></pre></div></div><p>这样三行内容    而如果重定向到文件或者管道的话 ,内容则变为:</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Now will fork a process from Parent
+Forked PID is 22882
+Now will fork a process from Parent
+Forked PID is 0
+</code></pre></div></div><p>四行, 具体一为什么会出现这一现象的原因有待深入学习fork和重定向的相关知识</p><hr /><p><a href="https://web.archive.org/web/20201020203814/https://void-shana.moe/category/linux">Linux</a>, <a href="https://web.archive.org/web/20201020203814/https://void-shana.moe/category/threads-and-process">Threads and Process</a>, <a href="https://web.archive.org/web/20201020203814/https://void-shana.moe/category/wine">wine</a>, <a href="https://web.archive.org/web/20201020203814/https://void-shana.moe/category/%e8%ae%a1%e7%ae%97%e6%9c%ba%e7%b3%bb%e7%bb%9f%e5%8e%9f%e7%90%86">计算机系统原理</a> <a href="https://web.archive.org/web/20201020203814/https://void-shana.moe/tag/c-linux">C. Linux</a>, <a href="https://web.archive.org/web/20201020203814/https://void-shana.moe/tag/kernel">kernel</a>, <a href="https://web.archive.org/web/20201020203814/https://void-shana.moe/tag/laravel">Laravel</a>, <a href="https://web.archive.org/web/20201020203814/https://void-shana.moe/tag/php">PHP</a>, <a href="https://web.archive.org/web/20201020203814/https://void-shana.moe/tag/python">Python</a>, <a href="https://web.archive.org/web/20201020203814/https://void-shana.moe/tag/shell">Shell</a>, <a href="https://web.archive.org/web/20201020203814/https://void-shana.moe/tag/web">Web</a>, <a href="https://web.archive.org/web/20201020203814/https://void-shana.moe/tag/wine">wine</a></p><hr /><h2 id="historical-comments">Historical Comments</h2><p>Post navigation ————— <a href="https://web.archive.org/web/20201020203814/https://void-shana.moe/linux/mingw-%e5%92%8c-msys-%e7%9a%84%e5%8c%ba%e5%88%ab.html">NEXT<br /> mingw 和 MSYS 的区别</a> <a href="https://web.archive.org/web/20201020203814/https://void-shana.moe/uncategorized/csapp-linking-%e5%ad%a6%e4%b9%a0%e6%80%bb%e7%bb%93.html">PREVIOUS CSAPP Linking 学习总结</a></p><script src="https://giscus.app/client.js" data-repo="VOID001/VOID001.github.io" data-repo-id="MDEwOlJlcG9zaXRvcnkzMzI0MDI4NQ==" data-category="Announcements" data-category-id="DIC_kwDOAfs03c4COSSU" data-mapping="pathname" data-reactions-enabled="1" data-emit-metadata="1" data-input-position="top" data-theme="light" data-lang="en" data-loading="lazy" crossorigin="anonymous" async> </script></article><div class="back"> <a href="/">Back</a></div><script src="https://cdn.bootcdn.net/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script> <script>hljs.highlightAll();</script></main></body></html>

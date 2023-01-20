@@ -1,0 +1,129 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1" /><title>ZOJ 3707 Calculate Prime S 矩阵快速幂+Fibonacci的性质</title><meta name="twitter:card" content="summary" /><meta name="twitter:site" content="@" /><meta name="twitter:title" content="ZOJ 3707 Calculate Prime S 矩阵快速幂+Fibonacci的性质" /><meta name="twitter:description" content="The content is recoverd from Wordpress Blog, for more details please check HERE"><meta name="description" content="The content is recoverd from Wordpress Blog, for more details please check HERE"><meta name="google-site-verification" content="epFgX0s_0RM3CdjwFcsewfXzPov2g8s9ZBOLyaIUH-o"><link rel="icon" href="/assets/favicon.png"><link rel="apple-touch-icon" href="/assets/touch-icon.png"><link rel="stylesheet" href="//code.cdn.mozilla.net/fonts/fira.css"><link rel="stylesheet" href="/assets/core.css"><link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.1.1/css/all.min.css" rel="stylesheet"><link href="https://cdn.bootcdn.net/ajax/libs/highlight.js/11.5.0/styles/github.min.css" rel="stylesheet"><link rel="canonical" href="/posts/zoj-3707-calculate-prime-s-%E7%9F%A9%E9%98%B5%E5%BF%AB%E9%80%9F%E5%B9%82fibonacci%E7%9A%84%E6%80%A7%E8%B4%A8"><link rel="alternate" type="application/atom+xml" title="VOID001's WOWO" href="/feed.xml" /> <script> (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){ (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o), m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m) })(window,document,'script','//www.google-analytics.com/analytics.js','ga'); ga( 'create', 'UA-73703130-2', 'auto' ); ga( 'send', 'pageview' ); </script></head><body><aside class="logo"> <a href="/"> <img src="/assets/avatar.jpeg" class="gravatar"> </a> <span class="logo-prompt">Back to Home</span></aside><div class="footer-flex" style="margin-bottom: 4px"> Thinking, Coding, Improving</div><div class="footer-flex" style="color: #333333"> <a href="http://github.com/VOID001"><i class="fa-brands fa-lg fa-github"></i></a> <span style="margin: 4px"></span> <a href="https://t.me/s/void001_fav"><i class="fa-brands fa-lg fa-telegram"></i></a> <span style="margin: 4px"></span> <a href="/feed"><i class="fa-solid fa-lg fa-rss"></i></a> <span style="margin: 4px"></span> <a href="/friends"><i class="fa-solid fa-lg fa-ship"></i></a></div><script src="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.1.1/js/fontawesome.min.js"></script><main> <noscript><style> article .footnotes { display: block; }</style></noscript><article><div class="center"><h1>ZOJ 3707 Calculate Prime S 矩阵快速幂+Fibonacci的性质</h1><time>December 20, 2014</time> <span>[ ]</span></div><div class="divider"></div><p>The content is recoverd from Wordpress Blog, for more details please check <a href="recover-my-blog">HERE</a></p><h5 id="december-20-2014"><a href="https://web.archive.org/web/20201020201305/https://void-shana.moe/acmalgo/number-theory/zoj-3707-calculate-prime-s-%e7%9f%a9%e9%98%b5%e5%bf%ab%e9%80%9f%e5%b9%82fibonacci%e7%9a%84%e6%80%a7%e8%b4%a8.html" title="7:56 pm">December 20, 2014</a></h5><p><a href="https://web.archive.org/web/20201020201305/https://void-shana.moe/author/void001" title="View all posts by VOID001">VOID001</a> Comments <a href="https://web.archive.org/web/20201020201305/https://void-shana.moe/acmalgo/number-theory/zoj-3707-calculate-prime-s-%e7%9f%a9%e9%98%b5%e5%bf%ab%e9%80%9f%e5%b9%82fibonacci%e7%9a%84%e6%80%a7%e8%b4%a8.html#respond">0 Comment</a></p><p>Calculate Prime S</p><table><tbody><tr><td><strong>Time Limit:</strong> 2000MS</td><td> </td><td><strong>Memory Limit:</strong> 262144KB</td><td> </td><td><strong>64bit IO Format:</strong> %lld &amp; %llu</td></tr></tbody></table><p>Description</p><p>Define <em>S[n]</em> as the number of subsets of {1, 2, …, <em>n</em>} that contain no consecutive integers. For each <em>S[n]</em>, if for all <em>i</em> (1 ≤ <em>i</em> &lt; <em>n</em>) gcd(<em>S[i]</em>, <em>S[n]</em>) is 1, we call that <em>S[n]</em> as a <em>Prime S</em>. Additionally, <em>S[1]</em> is also a <em>Prime S</em>. For the <em>Kth</em> minimum <em>Prime S</em>, we’d like to find the minimum <em>S[n]</em>which is multiple of <em>X</em> and not less than the <em>Kth</em> minimum <em>Prime S</em>. Please tell us the corresponding (<em>S[n]</em> ÷ <em>X</em>) mod <em>M</em>.</p><p>Input</p><p>There are multiple test cases. The first line of input is an integer T indicating the number of test cases.</p><p>For each test case, there are 3 integers <em>K</em> (1 ≤ <em>K</em> ≤ 106), <em>X</em> (3 ≤ <em>X</em> ≤ 100) and <em>M</em> (10 ≤ <em>M</em> ≤ 106), which are defined in above description.</p><p>Output</p><p>For each test case, please output the corresponding (<em>S[n]</em> ÷ <em>X</em>) mod <em>M</em>.</p><p>Sample Input</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1
+1 3 10
+</code></pre></div></div><p>culate Prime S</p><p>Sample Output </p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1
+</code></pre></div></div><p>解决这个问题需要的知识储备为 ：</p><ol><li>Fibonacci数列的性质</li><li>矩阵快速幂计算Fibonacci</li><li>取模运算的性质 (a/b)%c=(a%b*c)/b</li></ol><p><a href="https://web.archive.org/web/20201020201305/http://1.voidword.sinaapp.com/%e8%bd%acfibonacci-%e6%95%b0%e5%88%97%e7%9a%84%e5%9f%ba%e6%9c%ac%e6%80%a7%e8%b4%a8/" title="[转]Fibonacci 数列的基本性质">在这里有Fibonacci数列的基本性质</a> ，   <a href="https://web.archive.org/web/20201020201305/http://1.voidword.sinaapp.com/%e5%bf%ab%e9%80%9f%e5%b9%82%e7%ae%97%e6%b3%95-neu-1391/" title="快速幂算法 NEU 1391">快速幂的知识在这里有</a>，矩阵快速幂的代码在下面 ，理解了快速幂之后很好理解 。</p><p>本题首先要<strong>读清题目</strong>，本题涉及的元素较多 ，滤清思路之后 本题要求的 是 不小于 第 K 个 Prime S 的能被X整除的S 序列里的数字 ，而经过我们小数据打表发现 S序列为Fibonacci数列从第三项开始 也就是 2 3 5 8 13 … 而 Prime S 为 Fibonacci数列里的素数 ，由Fibonacci的性质知，Fibonacci中 第n项为Fibonacci素数的条件是 n为质数 当 n&gt;=5时成立  ，所以我们可以通过这个性质 结合素数表 来获得 第 K个Fibonacci素数在Fibonacci数列里的下标  在代码的注释里有具体例子 。然后 我们就可以往后枚举这个下标 用 矩阵快速幂的方法来求第n个Fibonacci数 ，然后找到能被X整除的 ，并进行 S/X %C = （S%XC）/X 的运算把结果输出即可 <strong>由于我的素数生成函数(筛法)把count的初值设置错误 导致开始一直在错， 另外需要注意 p[1] 和 p[2]的值要特殊处理 至于为何前面已经讲过了</strong></p><p>下面是代码</p><div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/*************************************************************************
+    &gt; File Name: C.cpp
+    &gt; Author: VOID\_133
+    &gt; ################### 
+    &gt; Mail: ################### 
+    &gt; Created Time: 2014年12月20日 星期六 13时12分59秒
+ ************************************************************************/
+#include&lt;iostream&gt;
+#include&lt;algorithm&gt;
+#include&lt;cstdio&gt;
+#include&lt;vector&gt;
+#include&lt;cstring&gt;
+#include&lt;map&gt;
+#include&lt;queue&gt;
+#include&lt;stack&gt;
+#include&lt;string&gt;
+#include&lt;cstdlib&gt;
+#include&lt;ctime&gt;
+#include&lt;set&gt;
+using namespace std;
+
+typedef long long LL;
+
+const LL maxn=16000000;
+LL p[maxn];
+bool prime[maxn];
+
+void genPrime()
+{
+	prime[0]=0;
+	prime[2]=1;
+	memset(prime,true,sizeof(prime));
+	//int count=0;						//Here is a big mistake!
+	int count=1;						
+	for(int i=2;i&lt;maxn;i++)
+	{
+		if(prime[i])
+		{
+			p[count++]=i;	
+			for(int j=i+i;j&lt;maxn;j+=i)
+			{
+				prime[j]=false;
+			}
+		}
+	}
+
+	p[1]=3;
+	p[2]=4;
+	//p[k] Store the index of the k th Prime S in Fibonacci Series
+	//Example:
+	//p[1]=3 means the index of the first Prime S (which is 2) in Fibonacci Series is 3 
+	// VERY IMPORTANT!!!
+	return ;
+}
+
+typedef struct 
+{
+	LL m[2][2];
+}Matrix;
+
+Matrix multi(Matrix a,Matrix b,LL MOD)
+{
+	Matrix c;
+	LL i,j;
+	for(int i=0;i&lt;2;i++)
+	{
+		for(int j=0;j&lt;2;j++)
+		{
+			c.m[i][j]=0;
+			for(int k=0;k&lt;2;k++)
+			{
+				c.m[i][j]+=a.m[i][k]*b.m[k][j];
+				c.m[i][j]%=MOD;						//Use MOD to make the number smaller
+			}
+		}
+	}
+	return c;
+}
+
+Matrix per={1,0,0,1};
+Matrix samp={1,1,1,0};
+
+Matrix matrixQuickPow(LL k,LL MOD)
+{
+	Matrix ans=per;
+	Matrix p=samp;
+	while(k)
+	{
+		if(k&amp;1)
+		{
+			ans=multi(ans,p,MOD);
+			k--;
+		}
+		p=multi(p,p,MOD);
+		k&gt;&gt;=1;
+	}
+	return ans;
+}
+
+int main(void)
+{
+	LL X,M,K;
+	genPrime();
+	int T;
+	scanf("%d",&amp;T);
+	LL mem;
+	while(T--)
+	{
+		scanf("%lld%lld%lld",&amp;K,&amp;X,&amp;M);
+		Matrix ans;
+		for(LL i=p[K];;i++)
+		{
+			ans=matrixQuickPow(i-1,X);
+			if(ans.m[0][0]%XThe content is recoverd from Wordpress Blog, for more details please check [HERE](recover-my-blog)0)
+			{
+				mem=i;
+				break;
+			}
+		}
+		ans=matrixQuickPow(mem-1,X*M);
+		LL res=ans.m[0][0]/X;
+		printf("%lldn",res);
+	}
+	return 0;
+}
+</code></pre></div></div><p> </p><hr /><p><a href="https://web.archive.org/web/20201020201305/https://void-shana.moe/category/acmalgo/number-theory">Number Theory</a> <a href="https://web.archive.org/web/20201020201305/https://void-shana.moe/tag/c-linux">C. Linux</a>, <a href="https://web.archive.org/web/20201020201305/https://void-shana.moe/tag/kernel">kernel</a>, <a href="https://web.archive.org/web/20201020201305/https://void-shana.moe/tag/laravel">Laravel</a>, <a href="https://web.archive.org/web/20201020201305/https://void-shana.moe/tag/php">PHP</a>, <a href="https://web.archive.org/web/20201020201305/https://void-shana.moe/tag/python">Python</a>, <a href="https://web.archive.org/web/20201020201305/https://void-shana.moe/tag/shell">Shell</a>, <a href="https://web.archive.org/web/20201020201305/https://void-shana.moe/tag/web">Web</a>, <a href="https://web.archive.org/web/20201020201305/https://void-shana.moe/tag/wine">wine</a></p><hr /><h2 id="historical-comments">Historical Comments</h2><p>Post navigation ————— <a href="https://web.archive.org/web/20201020201305/https://void-shana.moe/acmalgo/%e8%bd%acfibonacci-%e6%95%b0%e5%88%97%e7%9a%84%e5%9f%ba%e6%9c%ac%e6%80%a7%e8%b4%a8.html">NEXT<br /> [转]Fibonacci 数列的基本性质</a> <a href="https://web.archive.org/web/20201020201305/https://void-shana.moe/acmalgo/%e5%bf%ab%e9%80%9f%e5%b9%82%e7%ae%97%e6%b3%95-neu-1391.html">PREVIOUS 快速幂算法 NEU 1391</a></p><script src="https://giscus.app/client.js" data-repo="VOID001/VOID001.github.io" data-repo-id="MDEwOlJlcG9zaXRvcnkzMzI0MDI4NQ==" data-category="Announcements" data-category-id="DIC_kwDOAfs03c4COSSU" data-mapping="pathname" data-reactions-enabled="1" data-emit-metadata="1" data-input-position="top" data-theme="light" data-lang="en" data-loading="lazy" crossorigin="anonymous" async> </script></article><div class="back"> <a href="/">Back</a></div><script src="https://cdn.bootcdn.net/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script> <script>hljs.highlightAll();</script></main></body></html>
