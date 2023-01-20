@@ -58,4 +58,4 @@ defaults:
       render_with_liquid: false
 
 feed:
-  path: "feed"
+  path: "feed.xml"
